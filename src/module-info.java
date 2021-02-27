@@ -1,3 +1,0 @@
-module compiler {
-	requires javatuples;
-}
