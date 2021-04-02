@@ -64,11 +64,19 @@ public class Lexer {
         return true;
     }
 
-    public void scanEntireFile() throws IOException {
+    public void printTokenList() throws IOException {
         for(Token token = scan(); token.tag != 65535; token = scan()) {
             System.out.println(token.toString());
         }
         
+    }
+
+    public ArrayList getTokenList() throws IOException {
+        ArrayList tokenList = new ArrayList<Token>();
+        for(Token token = scan(); token.tag != 65535; token = scan()) {
+            tokenList.add(token);
+        }
+        return tokenList;
     }
 
     public void getSymbolTable() {
@@ -133,6 +141,16 @@ public class Lexer {
                 readch();
             } while (Character.isLetterOrDigit(ch));
             String s = sb.toString();
+
+            switch (s) {
+                case "init":
+                    return new Token(Tag.INIT);
+                case "stop":
+                    return new Token(Tag.STOP);
+                default:
+                    break;
+            }
+
             Word w = (Word) words.get(s);
             if (w != null)
                 return w;

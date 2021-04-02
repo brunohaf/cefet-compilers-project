@@ -1,13 +1,19 @@
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
+
 import LexicalAnalyzer.Lexer;
+import SyntacticAnalyzer.SyntaticAnalyzer;
 
 public class App {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         try {
-            Lexer lexer = new Lexer("testCode");
-            lexer.scanEntireFile();
-            lexer.getSymbolTable();
+            Lexer lexer = new Lexer("/home/heitor/projects/tmp/cefet-compilers-project/src/testCode");
+            ArrayList tokenList = lexer.getTokenList();
+
+            SyntaticAnalyzer syntaticAnalyzer = new SyntaticAnalyzer(tokenList);
+            syntaticAnalyzer.scanCode();
         }
-        catch(Exception e) {
+        catch(FileNotFoundException e) {
             System.out.println("File not found");
         }
       }
