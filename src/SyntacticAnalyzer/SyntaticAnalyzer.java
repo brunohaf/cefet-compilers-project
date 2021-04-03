@@ -63,7 +63,7 @@ public class SyntaticAnalyzer {
             }
             while(currentTokenIndex < tokenList.size() - 1);
       
-            System.out.println("Deu bom");
+            System.out.println("Success!! The code is valid");
 
     }
 }

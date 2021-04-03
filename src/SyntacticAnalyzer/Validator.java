@@ -8,7 +8,7 @@ import Exceptions.InvalidSyntaxException;
 import Models.Tag;
 import Models.Token;
 import Models.Word;
-import Models.Utils.LiteralTuple;
+import Models.Utils.Tuple;
 
 public class Validator {
 
@@ -24,6 +24,7 @@ public class Validator {
   private String INVALID_ATTRIB_SYNTAX_ERROR_MESSAGE = "Attritution syntax error.";
   private String COMMA_WITHOUT_IDENTIFIER_ERROR_MESSAGE = "Comma not followed by identifier on attribution.";
   private String LITERAL_WITHOUT_QUOTE_END_ERROR_MESSAGE = "LITERAL does not end with '\"'.";
+  private String UNCLOSED_PARENTHESES_ERROR_MESSAGE = "A parentheses was open but not closed in the same line or was never closed.";
 
   public Validator(ArrayList<Token> tokenList) {
     this.tokenList = tokenList;
@@ -39,36 +40,37 @@ public class Validator {
     }
   }
 
-  // W.I.P.
+  // ----------------------------------------WORK IN PROGRESS
+  //
+  // public int validateIf(int index) throws InvalidSyntaxException {
+  //   int nextIndex = validateParentheses(index + 1);
+  //   Token token = tokenList.get(nextIndex);
+  //   if (token.tag != Tag.BEG) {
+  //     throw new InvalidSyntaxException(BEGIN_ERROR_MESSAGE, token.line);
+  //   }
+  //   nextIndex++;
+  //   for (; (nextIndex < tokenList.size() - 1 || token.tag == Tag.END); nextIndex++) {
+  //     token = tokenList.get(nextIndex);
+  //     if (token.tag == Tag.IF) {
+  //       nextIndex = validateIf(nextIndex);
+  //     } else if (token.tag == Tag.ELSE) {
+  //       nextIndex = validateElse(nextIndex);
+  //     } else if (token.tag == Tag.DO) {
+  //       nextIndex = validateElse(nextIndex);
+  //     } else if (token.tag == Tag.WHILE) {
+  //       nextIndex = validateElse(nextIndex);
+  //     }
+  //   }
+
+  //   return nextIndex;
+  // }
+
   public int validateIf(int index) throws InvalidSyntaxException {
-    int nextIndex = validateParentheses(index + 1);
-    Token token = tokenList.get(nextIndex);
-    if (token.tag != Tag.BEG) {
-      throw new InvalidSyntaxException(BEGIN_ERROR_MESSAGE, token.line);
-    }
-    nextIndex++;
-    for (; (nextIndex < tokenList.size() - 1 || token.tag == Tag.END); nextIndex++) {
-      token = tokenList.get(nextIndex);
-      if (token.tag == Tag.IF) {
-        nextIndex = validateIf(nextIndex);
-      } else if (token.tag == Tag.ELSE) {
-        nextIndex = validateElse(nextIndex);
-      } else if (token.tag == Tag.DO) {
-        nextIndex = validateElse(nextIndex);
-      } else if (token.tag == Tag.WHILE) {
-        nextIndex = validateElse(nextIndex);
-      }
-    }
-
-    return nextIndex;
-  }
-
-  public int validateElse(int index) throws InvalidSyntaxException {
     int nextIndex = index;
     return nextIndex;
   }
 
-  public int validateParentheses(int index) throws InvalidSyntaxException {
+  public int validateElse(int index) throws InvalidSyntaxException {
     int nextIndex = index;
     return nextIndex;
   }
@@ -83,18 +85,13 @@ public class Validator {
     return nextIndex;
   }
 
-  public int validateExpression(int index) throws InvalidSyntaxException {
-    int nextIndex = index;
-    return nextIndex;
-  }
-
   public int validateRead(int index) throws InvalidSyntaxException {
     int nextIndex = index;
     return nextIndex;
   }
 
   public int validateWrite(int index) throws InvalidSyntaxException {
-    int nextIndex = validateParentheses(index);
+    int nextIndex = index;
     return nextIndex;
   }
 
@@ -105,7 +102,7 @@ public class Validator {
     } else {
       ArrayList<Token> statementTokenList = new ArrayList<Token>(tokenList.subList(index, semicolonIndex));
 
-      if(!isSameLineSemicolon(statementTokenList)) {
+      if (!isSameLineSemicolon(statementTokenList)) {
         throw new InvalidSyntaxException(SEMICOLON_NOT_IN_THE_SAME_LINE_ERROR_MESSAGE, tokenList.get(index).line);
       }
 
@@ -115,19 +112,18 @@ public class Validator {
           Token nextToken = statementTokenList.get(i + 1);
           switch (token.tag) {
           case Tag.ATTRIB:
-            LiteralTuple literalStr = null;
+            Tuple<String, Integer> literalStr = null;
 
             if (nextToken.tag == Tag.QUOTE) {
               literalStr = buildLiteralString(statementTokenList, i + 1);
             }
 
-            boolean literalCondition = literalStr == null ? false : strIsLiteral(literalStr.string);
+            boolean literalCondition = literalStr == null ? false : strIsLiteral(literalStr.key);
 
             if (!literalCondition && !isLiteral(nextToken) && !isDigit(nextToken)) {
               throw new InvalidSyntaxException(ATTRIB_WITHOUT_LITERAL_DIGIT_ERROR_MESSAGE, token.line);
-            }
-            else if (literalCondition){
-              i = literalStr.lastLiteralQuoteIndex;
+            } else if (literalCondition) {
+              i = literalStr.value;
             }
             break;
           case Tag.COMMA:
@@ -158,18 +154,19 @@ public class Validator {
 
   }
 
-  public LiteralTuple buildLiteralString(ArrayList<Token> statementList, int index) throws InvalidSyntaxException {
+  public Tuple<String, Integer> buildLiteralString(ArrayList<Token> statementList, int index)
+      throws InvalidSyntaxException {
     String literalString = "\"";
     int lastIndex = index;
     for (int i = index + 1; i < statementList.size() && statementList.get(i).tag != Tag.QUOTE; i++, lastIndex++) {
-      literalString += ((Word)statementList.get(i)).toString() + ' ';
+      literalString += ((Word) statementList.get(i)).toString() + ' ';
     }
     literalString += "\"";
-    Token lastToken = statementList.get(lastIndex+1);
+    Token lastToken = statementList.get(lastIndex + 1);
     if (lastToken.tag != Tag.QUOTE) {
       throw new InvalidSyntaxException(LITERAL_WITHOUT_QUOTE_END_ERROR_MESSAGE, lastToken.line);
     }
-    return new LiteralTuple(literalString, lastIndex+1);
+    return new Tuple<String, Integer>(literalString, lastIndex + 1);
   }
 
   public int indexOfToken(int startIndex, int tag) {
@@ -180,8 +177,8 @@ public class Validator {
     return -1;
   }
 
-  public boolean isSameLineSemicolon(ArrayList<Token> list){
-    return list.get(0).line == list.get(list.size()-1).line;
+  public boolean isSameLineSemicolon(ArrayList<Token> list) {
+    return list.get(0).line == list.get(list.size() - 1).line;
   }
 
   private boolean validatePattern(String str, String patternString) {
@@ -233,4 +230,77 @@ public class Validator {
     }
     return true;
   }
+
+
+  // ----------------------------------------WORK IN PROGRESS
+  //
+  // private boolean validateExpression(ArrayList<Token> tokenList) {
+  //   for (int i = 0; i < tokenList.size() - 1; i++) {
+  //     Token currentToken = tokenList.get(i);
+  //     if(!validateSimpleExpr(tokenList)){
+  //       throw new InvalidSyntaxException("dfsf")
+  //     }
+  //   }
+  //   return true;
+  // }
+
+  // ----------------------------------------WORK IN PROGRESS
+  //
+  // private boolean validateSimpleExpr(Token token) {
+  //   return validateTerm(token);
+  // }
+
+  // ----------------------------------------WORK IN PROGRESS
+  //
+  // private boolean validateTerm(Token token) {
+  //   return validateFactorA();
+  // }
+
+  // ----------------------------------------WORK IN PROGRESS
+  //
+  // private boolean validateFactorA(Token token) {
+  //   return validateFactor(token);
+  // }
+
+  // ----------------------------------------WORK IN PROGRESS
+  //
+  // private boolean validateFactor(ArrayList<Token> expressionCadidate, @Nullable Token token, @Nullable int firstParanthesesIndex) {
+  //   if(token != null){
+  //     return isIdentifier(token) || isContant(token);
+  //   }
+  //   else{
+  //     return validateExpression(expressionCadidate) && validateParentheses(firstParanthesesIndex));
+  //   }
+  // }
+
+  // ----------------------------------------WORK IN PROGRESS
+  //
+  // public ArrayList<Token> buildParenthesesExpression(int index) throws InvalidSyntaxException {
+  //   int nextIndex = index;
+  //   Token firstParentheses = tokenList.get(index);
+  //   for (int i = index; i < tokenList.size() - 1; i++) {
+  //     Token token = tokenList.get(i);
+  //     if (token.line == firstParentheses.line && token.tag == Tag.CLOSE_PARENTHESES) {
+  //         return tokenList.subList(index), i);
+  //     }
+  //   }
+  //   else{
+  //     throw new InvalidSyntaxException(UNCLOSED_PARENTHESES_ERROR_MESSAGE, firstParentheses.line);
+  //   }
+  // }
+
+  // private boolean validateRelOp(Token token) {
+  //   String lexem = (Word) token.toString();
+  //   return lexem == "=" || lexem == ">" || lexem == ">=" || lexem == "<" || lexem == "<=" || lexem == "<>";
+  // }
+
+  // private boolean validateMulOp(Token token) {
+  //   String lexem = (Word) token.toString();
+  //   return lexem == "*" || lexem == "/" || lexem == "and";
+  // }
+
+  // private boolean validateAddOp(Token token) {
+  //   String lexem = (Word) token.toString();
+  //   return lexem == "+" || lexem == "-" || lexem == "or";
+  // }
 }
