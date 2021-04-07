@@ -25,6 +25,7 @@ public class Validator {
   private String COMMA_WITHOUT_IDENTIFIER_ERROR_MESSAGE = "Comma not followed by identifier on attribution.";
   private String LITERAL_WITHOUT_QUOTE_END_ERROR_MESSAGE = "LITERAL does not end with '\"'.";
   private String UNCLOSED_PARENTHESES_ERROR_MESSAGE = "A parentheses was open but not closed in the same line or was never closed.";
+  private String FACTORA_END_ERROR_MESSAGE = "FACTOR-A does not contain a FACTOR, NOT FACTOR or -FACTOR";
 
   public Validator(ArrayList<Token> tokenList) {
     this.tokenList = tokenList;
@@ -43,31 +44,32 @@ public class Validator {
   // ----------------------------------------WORK IN PROGRESS
   //
   // public int validateIf(int index) throws InvalidSyntaxException {
-  //   int nextIndex = validateParentheses(index + 1);
-  //   Token token = tokenList.get(nextIndex);
-  //   if (token.tag != Tag.BEG) {
-  //     throw new InvalidSyntaxException(BEGIN_ERROR_MESSAGE, token.line);
-  //   }
-  //   nextIndex++;
-  //   for (; (nextIndex < tokenList.size() - 1 || token.tag == Tag.END); nextIndex++) {
-  //     token = tokenList.get(nextIndex);
-  //     if (token.tag == Tag.IF) {
-  //       nextIndex = validateIf(nextIndex);
-  //     } else if (token.tag == Tag.ELSE) {
-  //       nextIndex = validateElse(nextIndex);
-  //     } else if (token.tag == Tag.DO) {
-  //       nextIndex = validateElse(nextIndex);
-  //     } else if (token.tag == Tag.WHILE) {
-  //       nextIndex = validateElse(nextIndex);
-  //     }
-  //   }
+  // int nextIndex = validateParentheses(index + 1);
+  // Token token = tokenList.get(nextIndex);
+  // if (token.tag != Tag.BEG) {
+  // throw new InvalidSyntaxException(BEGIN_ERROR_MESSAGE, token.line);
+  // }
+  // nextIndex++;
+  // for (; (nextIndex < tokenList.size() - 1 || token.tag == Tag.END);
+  // nextIndex++) {
+  // token = tokenList.get(nextIndex);
+  // if (token.tag == Tag.IF) {
+  // nextIndex = validateIf(nextIndex);
+  // } else if (token.tag == Tag.ELSE) {
+  // nextIndex = validateElse(nextIndex);
+  // } else if (token.tag == Tag.DO) {
+  // nextIndex = validateElse(nextIndex);
+  // } else if (token.tag == Tag.WHILE) {
+  // nextIndex = validateElse(nextIndex);
+  // }
+  // }
 
-  //   return nextIndex;
+  // return nextIndex;
   // }
 
   public int validateIf(int index) throws InvalidSyntaxException {
-    int nextIndex = index;
-    return nextIndex;
+    int nextIndex = index+1;
+    return validateExpression(nextIndex).key;
   }
 
   public int validateElse(int index) throws InvalidSyntaxException {
@@ -102,7 +104,7 @@ public class Validator {
     } else {
       ArrayList<Token> statementTokenList = new ArrayList<Token>(tokenList.subList(index, semicolonIndex));
 
-      if (!isSameLineSemicolon(statementTokenList)) {
+      if (!isSameLineToken(statementTokenList)) {
         throw new InvalidSyntaxException(SEMICOLON_NOT_IN_THE_SAME_LINE_ERROR_MESSAGE, tokenList.get(index).line);
       }
 
@@ -177,7 +179,7 @@ public class Validator {
     return -1;
   }
 
-  public boolean isSameLineSemicolon(ArrayList<Token> list) {
+  public boolean isSameLineToken(ArrayList<Token> list) {
     return list.get(0).line == list.get(list.size() - 1).line;
   }
 
@@ -185,35 +187,6 @@ public class Validator {
     Pattern pattern = Pattern.compile(patternString, Pattern.CASE_INSENSITIVE);
     Matcher matcher = pattern.matcher(str);
     return matcher.find();
-  }
-
-  private boolean isDigit(Token token) {
-    String digitPattern = "[0-9]";
-    return validatePattern(token.toString(), digitPattern);
-  }
-
-  private boolean isNonZeroDigit(Token token) {
-    String nonZeroDigitPattern = "[1-9]";
-    return validatePattern(token.toString(), nonZeroDigitPattern);
-  }
-
-  private boolean isLetter(Token token) {
-    String letterPattern = "[A-Za-z]";
-    return validatePattern(token.toString(), letterPattern);
-  }
-
-  private boolean isIdentifier(Token token) {
-    String letterPattern = "([A-Za-z]|[0-9]|_)";
-    return validatePattern(token.toString(), letterPattern);
-  }
-
-  private boolean isLiteral(Token token) {
-    return strIsLiteral(token.toString());
-  }
-
-  private boolean strIsLiteral(String str) {
-    String letterPattern = "(^\"([A-Za-z]|\s|[0-9])*\"$)";
-    return validatePattern(str, letterPattern);
   }
 
   private boolean isType(Token token) {
@@ -231,76 +204,153 @@ public class Validator {
     return true;
   }
 
+  // ----------------------------------------WORK IN PROGRESS
+  private Tuple<Integer, Boolean> validateExpression(int index) throws InvalidSyntaxException {
+    Tuple<Integer, Boolean> isSimpleExpr = validateSimpleExpr(index);
+    if (isSimpleExpr.value) {
+      return isSimpleExpr;
+    } else {
+      int exprIndex = index;
+      Tuple<Integer, Boolean> isValidSimpleExpr = validateSimpleExpr(exprIndex++);
+      boolean isRelop = validateRelOp(tokenList.get(exprIndex++));
+      Tuple<Integer, Boolean> isValidSimpleExpr2 = validateTerm(exprIndex++);
+      boolean assertion = isValidSimpleExpr.value && isRelop && isValidSimpleExpr2.value;
+      return new Tuple<Integer, Boolean>(exprIndex, assertion);
+    }
+  }
 
   // ----------------------------------------WORK IN PROGRESS
-  //
-  // private boolean validateExpression(ArrayList<Token> tokenList) {
-  //   for (int i = 0; i < tokenList.size() - 1; i++) {
-  //     Token currentToken = tokenList.get(i);
-  //     if(!validateSimpleExpr(tokenList)){
-  //       throw new InvalidSyntaxException("dfsf")
-  //     }
-  //   }
-  //   return true;
-  // }
+  private Tuple<Integer, Boolean> validateSimpleExpr(int index) throws InvalidSyntaxException {
+    Tuple<Integer, Boolean> isTerm = validateTerm(index);
+    if (isTerm.value) {
+      return isTerm;
+    } else {
+      int simpleExprIndex = index;
+      Tuple<Integer, Boolean> isSimpleExpr = validateSimpleExpr(simpleExprIndex++);
+      boolean isAddop = validateAddOp(tokenList.get(simpleExprIndex++));
+      Tuple<Integer, Boolean> isValidTerm = validateTerm(simpleExprIndex++);
+      boolean assertion = isSimpleExpr.value && isAddop && isValidTerm.value;
+      return new Tuple<Integer, Boolean>(simpleExprIndex, assertion);
+    }
+  }
 
   // ----------------------------------------WORK IN PROGRESS
-  //
-  // private boolean validateSimpleExpr(Token token) {
-  //   return validateTerm(token);
-  // }
+  private Tuple<Integer, Boolean> validateTerm(int index) throws InvalidSyntaxException {
+    Tuple<Integer, Boolean> isFactorA = validateFactorA(index);
+    if (isFactorA.value) {
+      return isFactorA;
+    } else {
+      int termIndex = index;
+      Tuple<Integer, Boolean> isTerm = validateTerm(termIndex++);
+      boolean isMulop = validateMulOp(tokenList.get(termIndex++));
+      Tuple<Integer, Boolean> isValidFactorA = validateFactorA(termIndex++);
+      boolean assertion = isTerm.value && isMulop && isValidFactorA.value;
+      return new Tuple<Integer, Boolean>(termIndex, assertion);
+    }
+  }
 
-  // ----------------------------------------WORK IN PROGRESS
-  //
-  // private boolean validateTerm(Token token) {
-  //   return validateFactorA();
-  // }
+  private Tuple<Integer, Boolean> validateFactorA(int index) throws InvalidSyntaxException {
+    Token token = tokenList.get(index);
+    String lexem = token.toString();
+    if (lexem == "-" || lexem == "not") {
+      index++;
+    }
+    Tuple<Integer, Boolean> isFactor = validateFactor(index);
+    if (lexem != "-" && lexem != "not" && !isFactor.value) {
+      throw new InvalidSyntaxException(FACTORA_END_ERROR_MESSAGE, token.line);
+    } else {
+      return isFactor;
+    }
+  }
 
-  // ----------------------------------------WORK IN PROGRESS
-  //
-  // private boolean validateFactorA(Token token) {
-  //   return validateFactor(token);
-  // }
+  private Tuple<Integer, Boolean> validateFactor(int index) throws InvalidSyntaxException {
+    Token token = tokenList.get(index);
+    boolean assertion = false;
+    if (token.tag != Tag.OPEN_PARENTHESES) {
+      assertion = isIdentifier(token) || isConst(token);
+      return new Tuple<Integer, Boolean>(index + 1, assertion);
+    } else {
+      Tuple<Integer, ArrayList<Token>> expressionCadidate = buildParenthesesExpression(index);
+      assertion = validateExpression(index+1).value && validateParentheses(expressionCadidate.value);
+      return new Tuple<Integer, Boolean>(expressionCadidate.key, assertion);
+    }
+  }
 
-  // ----------------------------------------WORK IN PROGRESS
-  //
-  // private boolean validateFactor(ArrayList<Token> expressionCadidate, @Nullable Token token, @Nullable int firstParanthesesIndex) {
-  //   if(token != null){
-  //     return isIdentifier(token) || isContant(token);
-  //   }
-  //   else{
-  //     return validateExpression(expressionCadidate) && validateParentheses(firstParanthesesIndex));
-  //   }
-  // }
+  private boolean validateParentheses(ArrayList<Token> expressionCadidate) throws InvalidSyntaxException {
+    boolean parenthesesAreOnTheSameLine = isSameLineToken(expressionCadidate);
+    if (parenthesesAreOnTheSameLine) {
+      return parenthesesAreOnTheSameLine;
+    } else {
+      throw new InvalidSyntaxException(UNCLOSED_PARENTHESES_ERROR_MESSAGE, expressionCadidate.get(0).line);
+    }
+  }
 
-  // ----------------------------------------WORK IN PROGRESS
-  //
-  // public ArrayList<Token> buildParenthesesExpression(int index) throws InvalidSyntaxException {
-  //   int nextIndex = index;
-  //   Token firstParentheses = tokenList.get(index);
-  //   for (int i = index; i < tokenList.size() - 1; i++) {
-  //     Token token = tokenList.get(i);
-  //     if (token.line == firstParentheses.line && token.tag == Tag.CLOSE_PARENTHESES) {
-  //         return tokenList.subList(index), i);
-  //     }
-  //   }
-  //   else{
-  //     throw new InvalidSyntaxException(UNCLOSED_PARENTHESES_ERROR_MESSAGE, firstParentheses.line);
-  //   }
-  // }
+  public Tuple<Integer, ArrayList<Token>> buildParenthesesExpression(int index) throws InvalidSyntaxException {
+    Token firstParentheses = tokenList.get(index);
+    for (int i = index; i < tokenList.size() - 1; i++) {
+      Token token = tokenList.get(i);
+      if (token.line == firstParentheses.line && token.tag == Tag.CLOSE_PARENTHESES) {
+        return new Tuple<Integer, ArrayList<Token>>(i, new ArrayList<Token>(tokenList.subList(index, i)));
+      }
+    }
+    throw new InvalidSyntaxException(UNCLOSED_PARENTHESES_ERROR_MESSAGE, firstParentheses.line);
+  }
 
-  // private boolean validateRelOp(Token token) {
-  //   String lexem = (Word) token.toString();
-  //   return lexem == "=" || lexem == ">" || lexem == ">=" || lexem == "<" || lexem == "<=" || lexem == "<>";
-  // }
+  private boolean validateRelOp(Token token) {
+    String lexem = token.toString();
+    return lexem == "=" || lexem == ">" || lexem == ">=" || lexem == "<" || lexem == "<=" || lexem == "<>";
+  }
 
-  // private boolean validateMulOp(Token token) {
-  //   String lexem = (Word) token.toString();
-  //   return lexem == "*" || lexem == "/" || lexem == "and";
-  // }
+  private boolean validateMulOp(Token token) {
+    String lexem = token.toString();
+    return lexem == "*" || lexem == "/" || lexem == "and";
+  }
 
-  // private boolean validateAddOp(Token token) {
-  //   String lexem = (Word) token.toString();
-  //   return lexem == "+" || lexem == "-" || lexem == "or";
-  // }
+  private boolean validateAddOp(Token token) {
+    String lexem = token.toString();
+    return lexem == "+" || lexem == "-" || lexem == "or";
+  }
+
+  private boolean isConst(Token token) {
+    return isIntegerConst(token) || isLiteral(token);
+  }
+
+  private boolean isIntegerConst(Token token) {
+    return isNonZeroDigit(token) || token.toString() == "0";
+  }
+
+  private boolean isRealConst(Token token) {
+    String lexem = ((Word) token).toString();
+    String[] splittedLexem = lexem.split(".");
+    return isIntegerConst(new Word(splittedLexem[0], Tag.REAL)) && isDigit(new Word(splittedLexem[1], Tag.NUM));
+  }
+
+  private boolean isDigit(Token token) {
+    String digitPattern = "[0-9]+";
+    return validatePattern(token.toString(), digitPattern);
+  }
+
+  private boolean isNonZeroDigit(Token token) {
+    String nonZeroDigitPattern = "[1-9]+";
+    return validatePattern(token.toString(), nonZeroDigitPattern);
+  }
+
+  private boolean isLetter(Token token) {
+    String letterPattern = "[A-Za-z]+";
+    return validatePattern(token.toString(), letterPattern);
+  }
+
+  private boolean isIdentifier(Token token) {
+    String letterPattern = "([A-Za-z]|[0-9]|_)";
+    return validatePattern(token.toString(), letterPattern);
+  }
+
+  private boolean isLiteral(Token token) {
+    return strIsLiteral(token.toString());
+  }
+
+  private boolean strIsLiteral(String str) {
+    String letterPattern = "(^\"([A-Za-z]|\s|[0-9])*\"$)";
+    return validatePattern(str, letterPattern);
+  }
 }
