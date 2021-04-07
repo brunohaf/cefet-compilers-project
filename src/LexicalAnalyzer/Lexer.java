@@ -5,7 +5,6 @@ import java.util.*;
 
 import Models.*;
 
-
 public class Lexer {
     public int line = 1; // contador de linhas
     private char ch = ' '; // caractere lido do arquivo
@@ -30,7 +29,7 @@ public class Lexer {
             System.out.println("Arquivo não encontrado");
             throw e;
         }
-        //Insere palavras reservadas na HashTable
+        // Insere palavras reservadas na HashTable
         reserve(new Word("init", Tag.BEG));
         reserve(new Word("stop", Tag.END));
         reserve(new Word("is", Tag.IS));
@@ -65,15 +64,15 @@ public class Lexer {
     }
 
     public void printTokenList() throws IOException {
-        for(Token token = scan(); token.tag != 65535; token = scan()) {
+        for (Token token = scan(); token.tag != 65535; token = scan()) {
             System.out.println(token.toString());
         }
-        
+
     }
 
     public ArrayList getTokenList() throws IOException {
         ArrayList tokenList = new ArrayList<Token>();
-        for(Token token = scan(); token.tag != 65535; token = scan()) {
+        for (Token token = scan(); token.tag != 65535; token = scan()) {
             tokenList.add(token);
         }
         return tokenList;
@@ -95,48 +94,54 @@ public class Lexer {
                 break;
         }
         switch (ch) {
-            // Operadores
-            case ';':
-                readch();
-                return new Token(Tag.SEMICOLON, line);
-            case ',':
-                readch();
-                return new Token(Tag.COMMA, line);
-            case ':':
-                if (readch('='))
-                    return new Token(Tag.ATTRIB, line);
-                else
-                    return new Token(':', line);
-            case '"':
-                readch();
-                return new Token(Tag.QUOTE, line);
-            case '&':
-                if (readch('&'))
-                    return new Word("&&", Tag.AND, line);
-                else
-                    return new Token('&', line);
-            case '|':
-                if (readch('|'))
-                    return new Word("||", Tag.OR, line);
-                else
-                    return new Token('|', line);
-            case '=':
-                if (readch('='))
-                    return new Word("==", Tag.EQ, line);
-                else
-                    return new Token('=', line);
-            case '<':
-                if (readch('='))
-                    return new Word("<=", Tag.LE, line);
-                if (readch('>'))
-                    return new Word("<>", Tag.NE, line);
-                else
-                    return new Token('<', line);
-            case '>':
-                if (readch('='))
-                    return new Word(">=", Tag.GE, line);
-                else
-                    return new Token('>', line);
+        // Operadores
+        case ';':
+            readch();
+            return new Token(Tag.SEMICOLON, line);
+        case ',':
+            readch();
+            return new Token(Tag.COMMA, line);
+        case ':':
+            if (readch('='))
+                return new Token(Tag.ATTRIB, line);
+            else
+                return new Token(':', line);
+        case '"':
+            readch();
+            return new Token(Tag.QUOTE, line);
+        case '&':
+            if (readch('&'))
+                return new Word("&&", Tag.AND, line);
+            else
+                return new Token('&', line);
+        case '|':
+            if (readch('|'))
+                return new Word("||", Tag.OR, line);
+            else
+                return new Token('|', line);
+        case '=':
+            if (readch('='))
+                return new Word("==", Tag.EQ, line);
+            else
+                return new Token('=', line);
+        case '<':
+            if (readch('='))
+                return new Word("<=", Tag.LE, line);
+            if (readch('>'))
+                return new Word("<>", Tag.NE, line);
+            else
+                return new Token('<', line);
+        case '>':
+            if (readch('='))
+                return new Word(">=", Tag.GE, line);
+            else
+                return new Token('>', line);
+        case '(':
+            readch();
+            return new Token(Tag.OPEN_PARENTHESES, line);
+        case ')':
+            readch();
+            return new Token(Tag.CLOSE_PARENTHESES, line);
         }
         // Números
         if (Character.isDigit(ch)) {
@@ -157,49 +162,48 @@ public class Lexer {
             String s = sb.toString();
 
             switch (s) {
-                case "init":
-                    return new Token(Tag.INIT,line);
-                case "stop":
-                    return new Token(Tag.STOP,line);
+            case "init":
+                return new Token(Tag.INIT, line);
+            case "stop":
+                return new Token(Tag.STOP, line);
 
-                case "is":
-                    return new Token(Tag.IS,line);
-                
-                case "integer":
-                    return new Token(Tag.INT,line);
-                case "string":
-                    return new Token(Tag.STRING,line);
-                case "real":
-                    return new Token(Tag.REAL,line);
-                    
-                case "if":
-                    return new Token(Tag.IF,line);
-                case "begin":
-                    return new Token(Tag.BEG,line);
+            case "is":
+                return new Token(Tag.IS, line);
 
-                case "end":
-                    return new Token(Tag.END,line);
-                case "else":
-                    return new Token(Tag.ELSE,line);
+            case "integer":
+                return new Token(Tag.INT, line);
+            case "string":
+                return new Token(Tag.STRING, line);
+            case "real":
+                return new Token(Tag.REAL, line);
 
-                case "do":
-                    return new Token(Tag.DO,line);
-                case "while":
-                    return new Token(Tag.WHILE,line);
+            case "if":
+                return new Token(Tag.IF, line);
+            case "begin":
+                return new Token(Tag.BEG, line);
 
-                case "read":
-                    return new Token(Tag.READ,line);
-                case "write":
-                    return new Token(Tag.WRITE,line);
+            case "end":
+                return new Token(Tag.END, line);
+            case "else":
+                return new Token(Tag.ELSE, line);
 
+            case "do":
+                return new Token(Tag.DO, line);
+            case "while":
+                return new Token(Tag.WHILE, line);
 
-                default:
-                    break;
+            case "read":
+                return new Token(Tag.READ, line);
+            case "write":
+                return new Token(Tag.WRITE, line);
+
+            default:
+                break;
             }
 
             // Word w = (Word) words.get(s);
             // if (w != null)
-            //     return w;
+            // return w;
             Word w = new Word(s, Tag.ID, line);
             // words.put(s, w);
             return w;
@@ -207,7 +211,7 @@ public class Lexer {
         // Caracteres não especificados
         Token t = new Token(ch, line);
         ch = ' ';
-        if(ch == -1){
+        if (ch == -1) {
             return null;
         }
         return t;
