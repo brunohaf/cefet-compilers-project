@@ -48,32 +48,6 @@ public class Validator {
     }
   }
 
-  // ----------------------------------------WORK IN PROGRESS
-  //
-  // public int validateIf(int index) throws InvalidSyntaxException {
-  // int nextIndex = validateParentheses(index + 1);
-  // Token token = tokenList.get(nextIndex);
-  // if (token.tag != Tag.BEG) {
-  // throw new InvalidSyntaxException(BEGIN_ERROR_MESSAGE, token.line);
-  // }
-  // nextIndex++;
-  // for (; (nextIndex < tokenList.size() - 1 || token.tag == Tag.END);
-  // nextIndex++) {
-  // token = tokenList.get(nextIndex);
-  // if (token.tag == Tag.IF) {
-  // nextIndex = validateIf(nextIndex);
-  // } else if (token.tag == Tag.ELSE) {
-  // nextIndex = validateElse(nextIndex);
-  // } else if (token.tag == Tag.DO) {
-  // nextIndex = validateElse(nextIndex);
-  // } else if (token.tag == Tag.WHILE) {
-  // nextIndex = validateElse(nextIndex);
-  // }
-  // }
-
-  // return nextIndex;
-  // }
-
   public int validateIf(int index) throws InvalidSyntaxException {
     int nextIndex = index + 1;
     return validateExpression(nextIndex).key;
@@ -180,8 +154,121 @@ public class Validator {
   // return semicolonIndex;
   // }
 
-  public void validateOperators() throws InvalidSyntaxException {
+  // stmt-list ::= stmt ";" { stmt ";" }
+  public int validateStatementList(int index) throws InvalidSyntaxException {
+    int semicolonIndex = indexOfToken(index, Tag.SEMICOLON);
+    if (semicolonIndex == -1) {
+      throw new InvalidSyntaxException(NO_SEMICOLON_ERROR_MESSAGE, tokenList.get(index).line);
+    } else {
+      validateStatement(index);
+    }
+    return semicolonIndex;
+  }
 
+  // statment ::= assign-stmt | if-stmt | do | read-stmt | write-stmt
+  // <----------este
+  public int validateStatement(int index) throws InvalidSyntaxException {
+    for (int i = index; i < tokenList.size() - 1; i++) {
+      Token token = tokenList.get(i);
+      try {
+        switch (token.tag) {
+        case Tag.IF:
+          if (!validateIFStatement(i).value) {
+            throw new InvalidSyntaxException("INVALID IF STATEMENT.", token.line);
+          }
+          break;
+        case Tag.DO:
+          //if (!isIdentifier(nextToken)) {
+            throw new InvalidSyntaxException("INVALID DO STATEMENT.", token.line);
+          //}
+         // break;
+        case Tag.READ:
+          //if (!isType(nextToken)) {
+            throw new InvalidSyntaxException("INVALID READ STATEMENT.", token.line);
+          //}
+          //break;
+        case Tag.WRITE:
+          //if (!isType(nextToken)) {
+            throw new InvalidSyntaxException("INVALID WRITE STATEMENT.", token.line);
+          //}
+          //break;
+        default:
+          if (!validateAssignStatement(i).value) {
+            throw new InvalidSyntaxException(INVALID_ATTRIB_SYNTAX_ERROR_MESSAGE, token.line);
+          }
+          break;
+        }
+      } catch (ArrayIndexOutOfBoundsException e) {
+        throw new InvalidSyntaxException(INVALID_ATTRIB_SYNTAX_ERROR_MESSAGE, token.line);
+      }
+    }
+    return indexOfToken(index, Tag.SEMICOLON);
+  }
+
+  private Tuple<Integer, Boolean> validateIFStatement(int index) throws InvalidSyntaxException {
+    Token token = tokenList.get(index + 1);
+    if (token.tag != Tag.OPEN_PARENTHESES) {
+      throw new InvalidSyntaxException("IF STATEMENT do not start with '('.", token.line);
+    }
+    Tuple<Integer, Boolean> expressionAssertion = validateExpression(index + 1);
+
+    int indexOfNextTokenAfterCondition = expressionAssertion.key + 1;
+
+    if (tokenList.get(indexOfNextTokenAfterCondition).tag != Tag.CLOSE_PARENTHESES) {
+      throw new InvalidSyntaxException("IF STATEMENT do not end with ')'.", token.line);
+    }
+
+    int indexOfNextTokenAfterCloseParentheses = indexOfNextTokenAfterCondition + 1;
+
+    if (tokenList.get(indexOfNextTokenAfterCloseParentheses).tag != Tag.BEG) {
+      throw new InvalidSyntaxException("IF STATEMENT do not start with BEGIN.", token.line);
+    } else {
+      int indexOfNextTokenAfterBegin = indexOfNextTokenAfterCloseParentheses + 1;
+
+      int indexOfNextTokenAfterStatementList = validateStatementList(indexOfNextTokenAfterBegin) + 1;
+
+      if (tokenList.get(indexOfNextTokenAfterStatementList).tag != Tag.END) {
+        throw new InvalidSyntaxException("IF STATEMENT do not end with END.", token.line);
+      }
+
+      int indexOfNextTokenAfterEnd = indexOfNextTokenAfterStatementList + 1;
+
+      return new Tuple<Integer, Boolean>(indexOfNextTokenAfterEnd,true);
+
+    }
+  }
+
+  // assign-statement:= identifier ":=" simple_expr
+  public Tuple<Integer, Boolean> validateAssignStatement(int index) throws InvalidSyntaxException {
+    for (int i = index; i < tokenList.size() - 1; i++) {
+      Token token = tokenList.get(i);
+      try {
+        Token nextToken = tokenList.get(i + 1);
+        switch (token.tag) {
+        case Tag.ATTRIB:
+          i = validateSimpleExpr(i).key;
+          break;
+        case Tag.COMMA:
+          if (!isIdentifier(nextToken)) {
+            throw new InvalidSyntaxException(COMMA_WITHOUT_IDENTIFIER_ERROR_MESSAGE, token.line);
+          }
+          break;
+        case Tag.IS:
+          if (!isType(nextToken)) {
+            throw new InvalidSyntaxException(INVALID_IS_ATTRIB_ERROR_MESSAGE, token.line);
+          }
+          break;
+        default:
+          if (!isIdentifier(token)) {
+            throw new InvalidSyntaxException(INVALID_ATTRIB_SYNTAX_ERROR_MESSAGE, token.line);
+          }
+          break;
+        }
+      } catch (ArrayIndexOutOfBoundsException e) {
+        throw new InvalidSyntaxException(INVALID_ATTRIB_SYNTAX_ERROR_MESSAGE, token.line);
+      }
+    }
+    return new Tuple<Integer, Boolean>(indexOfToken(index, Tag.SEMICOLON), true);
   }
 
   public Tuple<String, Integer> buildLiteralString(ArrayList<Token> statementList, int index)
@@ -207,8 +294,8 @@ public class Validator {
     return -1;
   }
 
-  public boolean isSameLineToken(ArrayList<Token> list) {
-    return list.get(0).line == list.get(list.size() - 1).line;
+  public boolean isSameLineToken(int startIndex, int stopIndex) {
+    return tokenList.get(startIndex).line == tokenList.get(stopIndex).line;
   }
 
   private boolean validatePattern(String str, String patternString) {
@@ -235,61 +322,47 @@ public class Validator {
   }
 
   // expression := simple-expr | simple-expr relop simple-expr
-  //  simple-expr :=      term | simple-expr addop term
   private Tuple<Integer, Boolean> validateExpression(int index) throws InvalidSyntaxException {
     int termIndex = index + 1;
-    if (!validateSimpleExpr(index).value || termIndex > tokenList.size()) {
+    Tuple<Integer, Boolean> isSimpleExpr = validateSimpleExpr(index);
+
+    if (!isSimpleExpr.value || termIndex > tokenList.size()) {
       throw new InvalidSyntaxException(EXPRESSION_WITH_NO_SIMPLEEXPR_ERROR_MESSAGE, tokenList.get(index).line);
     }
-    if (tokenList.get(termIndex).tag != Tag.SEMICOLON) {
-      if (validateRelOp(tokenList.get(termIndex))) {
-        Tuple<Integer, Boolean> isSimpleExpr = validateSimpleExpr(termIndex + 1);
-        return new Tuple<Integer, Boolean>(termIndex, isSimpleExpr.value);
-      } else {
-        throw new InvalidSyntaxException(INVALID_EXPRESSION_ERROR_MESSAGE, tokenList.get(termIndex).line);
-      }
-    } else {
-      Tuple<Integer, Boolean> isSimpleExpr = validateSimpleExpr(index);
-      return isSimpleExpr;
+    if (validateRelOp(tokenList.get(termIndex))) {
+      Tuple<Integer, Boolean> isSimpleExpr2 = validateSimpleExpr(termIndex + 1);
+      return new Tuple<Integer, Boolean>(termIndex, isSimpleExpr2.value);
     }
+    return isSimpleExpr;
   }
 
   // simple-expr := term | simple-expr addop term
   private Tuple<Integer, Boolean> validateSimpleExpr(int index) throws InvalidSyntaxException {
     int termIndex = index + 1;
-    if (!validateFactorA(index).value || termIndex > tokenList.size()) {
+    Tuple<Integer, Boolean> isTerm = validateTerm(index);
+
+    if (!isTerm.value || termIndex > tokenList.size()) {
       throw new InvalidSyntaxException(SIMPLEEXPR_WITH_NO_FACTORA_ERROR_MESSAGE, tokenList.get(index).line);
     }
-    if (tokenList.get(termIndex).tag != Tag.SEMICOLON) {
-      if (validateAddOp(tokenList.get(termIndex))) {
-        Tuple<Integer, Boolean> isSimpleExpr = validateSimpleExpr(termIndex + 1);
-        return new Tuple<Integer, Boolean>(termIndex, isSimpleExpr.value);
-      } else {
-        throw new InvalidSyntaxException(INVALID_SIMPLEEXPR_ERROR_MESSAGE, tokenList.get(termIndex).line);
-      }
-    } else {
-      Tuple<Integer, Boolean> isTerm = validateTerm(index);
-      return isTerm;
+    if (validateAddOp(tokenList.get(termIndex))) {
+      Tuple<Integer, Boolean> isSimpleExpr = validateSimpleExpr(termIndex + 1);
+      return new Tuple<Integer, Boolean>(termIndex, isSimpleExpr.value);
     }
+    return isTerm;
   }
 
   // term := factorA | term mulop factorA
   private Tuple<Integer, Boolean> validateTerm(int index) throws InvalidSyntaxException {
-    int termIndex = index + 1;
-    if (!validateFactorA(index).value || termIndex > tokenList.size()) {
+    int nextIndex = index + 1;
+    Tuple<Integer, Boolean> isFactorA = validateFactorA(index);
+    if (!isFactorA.value || nextIndex > tokenList.size()) {
       throw new InvalidSyntaxException(TERM_WITH_NO_IDENTIFIER_ERROR_MESSAGE, tokenList.get(index).line);
     }
-    if (tokenList.get(termIndex).tag != Tag.SEMICOLON) {
-      if (validateMulOp(tokenList.get(termIndex))) {
-        Tuple<Integer, Boolean> isTerm = validateTerm(termIndex + 1);
-        return new Tuple<Integer, Boolean>(termIndex, isTerm.value);
-      } else {
-        throw new InvalidSyntaxException(INVALID_TERM_ERROR_MESSAGE, tokenList.get(termIndex).line);
-      }
-    } else {
-      Tuple<Integer, Boolean> isFactorA = validateFactorA(index);
-      return isFactorA;
+    if (validateMulOp(tokenList.get(nextIndex))) {
+      Tuple<Integer, Boolean> isTerm = validateTerm(nextIndex + 1);
+      return new Tuple<Integer, Boolean>(nextIndex, isTerm.value);
     }
+    return isFactorA;
   }
 
   // factor-a := factor | not factor | "-" factor
@@ -315,30 +388,19 @@ public class Validator {
       assertion = isIdentifier(token) || isConst(token);
       return new Tuple<Integer, Boolean>(index + 1, assertion);
     } else {
-      Tuple<Integer, ArrayList<Token>> expressionCadidate = buildParenthesesExpression(index);
-      assertion = validateExpression(index + 1).value && validateParentheses(expressionCadidate.value);
-      return new Tuple<Integer, Boolean>(expressionCadidate.key, assertion);
+      int indexOfFirstCloseParentheses = indexOfToken(index, Tag.CLOSE_PARENTHESES);
+      assertion = validateExpression(index + 1).value && validateParentheses(index, indexOfFirstCloseParentheses);
+      return new Tuple<Integer, Boolean>(indexOfFirstCloseParentheses, assertion);
     }
   }
 
-  private boolean validateParentheses(ArrayList<Token> expressionCadidate) throws InvalidSyntaxException {
-    boolean parenthesesAreOnTheSameLine = isSameLineToken(expressionCadidate);
+  private boolean validateParentheses(int startIndex, int endIndex) throws InvalidSyntaxException {
+    boolean parenthesesAreOnTheSameLine = isSameLineToken(startIndex, endIndex);
     if (parenthesesAreOnTheSameLine) {
       return parenthesesAreOnTheSameLine;
     } else {
-      throw new InvalidSyntaxException(UNCLOSED_PARENTHESES_ERROR_MESSAGE, expressionCadidate.get(0).line);
+      throw new InvalidSyntaxException(UNCLOSED_PARENTHESES_ERROR_MESSAGE, tokenList.get(startIndex).line);
     }
-  }
-
-  public Tuple<Integer, ArrayList<Token>> buildParenthesesExpression(int index) throws InvalidSyntaxException {
-    Token firstParentheses = tokenList.get(index);
-    for (int i = index; i < tokenList.size() - 1; i++) {
-      Token token = tokenList.get(i);
-      if (token.line == firstParentheses.line && token.tag == Tag.CLOSE_PARENTHESES) {
-        return new Tuple<Integer, ArrayList<Token>>(i, new ArrayList<Token>(tokenList.subList(index, i)));
-      }
-    }
-    throw new InvalidSyntaxException(UNCLOSED_PARENTHESES_ERROR_MESSAGE, firstParentheses.line);
   }
 
   // relop := "=" | ">" | ">=" | "<" | "<=" | "<>"

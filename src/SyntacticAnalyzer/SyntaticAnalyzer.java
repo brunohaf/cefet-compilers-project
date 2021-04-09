@@ -39,7 +39,7 @@ public class SyntaticAnalyzer {
             }
 
             else if (currentToken.tag == Tag.IF) {
-                currentTokenIndex = validator.validateIf(currentTokenIndex);
+                currentTokenIndex = validator.validateStatement(currentTokenIndex);
             }
 
             else if (currentToken.tag == Tag.ELSE) {

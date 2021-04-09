@@ -1,8 +1,6 @@
 init
-  a, b is integer;
-  a := 1;
-  b := 2;
-
-  curso is string;
-  curso := "Engenharia de Computacao";
+ if ( a>b and a>c or (b>c))
+ begin
+  maior := 22;
+ end
 stop
