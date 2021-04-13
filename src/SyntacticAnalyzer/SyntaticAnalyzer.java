@@ -30,31 +30,7 @@ public class SyntaticAnalyzer {
         do {
             Token currentToken = nextToken();
 
-            if (currentToken.tag == Tag.READ) {
-                currentTokenIndex = validator.validateRead(currentTokenIndex);
-            }
-
-            else if (currentToken.tag == Tag.WRITE) {
-                currentTokenIndex = validator.validateWrite(currentTokenIndex);
-            }
-
-            else if (currentToken.tag == Tag.IF) {
-                currentTokenIndex = validator.validateStatement(currentTokenIndex);
-            }
-
-            else if (currentToken.tag == Tag.ELSE) {
-                currentTokenIndex = validator.validateElse(currentTokenIndex);
-            }
-
-            else if (currentToken.tag == Tag.DO) {
-                currentTokenIndex = validator.validateDo(currentTokenIndex);
-            }
-
-            else if (currentToken.tag == Tag.WHILE) {
-                currentTokenIndex = validator.validateWhile(currentTokenIndex);
-            }
-
-            else if (currentToken.tag == Tag.STOP) {
+            if (currentToken.tag == Tag.STOP) {
             }
 
             else {
