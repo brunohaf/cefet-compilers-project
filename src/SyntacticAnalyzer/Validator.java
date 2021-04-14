@@ -13,27 +13,37 @@ import Models.Utils.Tuple;
 
 public class Validator {
 
+  private static final String INVALID_IF_STATEMENT_ERROR_MESSAGE = "Invalid IF STATEMENT.";
+  private static final String DO_STATEMENT_WITHOUT_WHILE_ERROR_MESSAGE = "DO STATEMENT without WHILE.";
+  private static final String WHILE_NOT_FOLLOWED_BY_PARENTHESES_ERROR_MESSAGE = "WHILE not followed by '('.";
+  private static final String EXPRESSION_NOT_FOLLOWED_BY_PARENTHESES_ERROR_MESSAGE = "EXPRESSION not followed by ')'.";
+  private static final String INVALID_DO_STATEMENT_ERROR_MESSAGE = "Invalid DO STATEMENT.";
+  private static final String INVALID_READ_STATEMENT_ERROR_MESSAGE = "Invalid READ STATEMENT.";
+  private static final String INVALID_WRITE_STATEMENT_ERROR_MESSAGE = "Invalid WRITE STATEMENT.";
+  private static final String IF_STATEMENT_NOT_START_WITH_PARENTHESES_ERROR_MESSAGE = "IF STATEMENT do not end with '('.";
+  private static final String IF_STATEMENT_NOT_END_WITH_PARENTHESES_ERROR_MESSAGE = "IF STATEMENT do not end with ')'.";
+  private static final String IF_STATEMENT_NOT_START_WITH_BEGIN_ERROR_MESSAGE = "IF STATEMENT do not start with BEGIN.";
+  private static final String INIT_ERROR_MESSAGE = "Code doesnt start with 'INIT'.";
+  private static final String STOP_ERROR_MESSAGE = "Code doesnt finish with 'STOP'.";
+  private static final String BEGIN_ERROR_MESSAGE = "If statement not followed by BEGIN.";
+  private static final String PARENTHESES_ERROR_MESSAGE = "Error on parentheses condition.";
+  private static final String NO_SEMICOLON_ERROR_MESSAGE = "Statement has no SEMICOLON.";
+  private static final String SEMICOLON_NOT_IN_THE_SAME_LINE_ERROR_MESSAGE = "SEMICOLON is missing.";
+  private static final String ATTRIB_WITHOUT_LITERAL_DIGIT_ID_ERROR_MESSAGE = "Attribution not followed by a LITERAL, IDENTIFIER or DIGITs.";
+  private static final String INVALID_IS_ATTRIB_ERROR_MESSAGE = " 'IS' Attribution must be of type INTEGER, REAL or STRING.";
+  private static final String INVALID_ID_ATTRIB_ERROR_MESSAGE = " 'IDENTIFIER' Attribution not ending with SEMICOLON";
+  private static final String INVALID_ATTRIB_SYNTAX_ERROR_MESSAGE = "Attritution syntax error.";
+  private static final String COMMA_WITHOUT_IDENTIFIER_ERROR_MESSAGE = "Comma not followed by IDENTIFIER on attribution.";
+  private static final String LITERAL_WITHOUT_QUOTE_END_ERROR_MESSAGE = "LITERAL does not end with '\"'.";
+  private static final String UNCLOSED_PARENTHESES_ERROR_MESSAGE = "A parentheses was open but not closed in the same line or was never closed.";
+  private static final String FACTORA_END_ERROR_MESSAGE = "FACTOR-A does not contain a FACTOR, NOT FACTOR or -FACTOR.";
+  private static final String INVALID_TERM_ERROR_MESSAGE = "Invalid TERM expression.";
+  private static final String TERM_WITH_NO_IDENTIFIER_ERROR_MESSAGE = "TERM with no-IDENTIFIER.";
+  private static final String SIMPLEEXPR_WITH_NO_FACTORA_ERROR_MESSAGE = "SIMPLE-EXPRESSION with no-FACTOR-A.";
+  private static final String INVALID_SIMPLEEXPR_ERROR_MESSAGE = "Invalid SIMPLE-EXPRESSION.";
+  private static final String EXPRESSION_WITH_NO_SIMPLEEXPR_ERROR_MESSAGE = "EXPRESSION with no-SIMPLE-EXPRESSION.";
+  private static final String INVALID_EXPRESSION_ERROR_MESSAGE = "Invalid EXPRESSION expression.";
   private ArrayList<Token> tokenList;
-  private final String INIT_ERROR_MESSAGE = "Code doesnt start with 'INIT'.";
-  private final String STOP_ERROR_MESSAGE = "Code doesnt finish with 'STOfinal P'.";
-  private final String BEGIN_ERROR_MESSAGE = "If statement not followed by BEGIN.";
-  private final String PARENTHESES_ERROR_MESSAGE = "Error on parentheses condition.";
-  private final String NO_SEMICOLON_ERROR_MESSAGE = "Statement has no SEMICOfinal LON.";
-  private final String SEMICOLON_NOT_IN_THE_SAME_LINE_ERROR_MESSAGE = "SEMICOfinal LON is missing.";
-  private final String ATTRIB_WITHOUT_LITERAL_DIGIT_ID_ERROR_MESSAGE = "Attrifinal bution not followed by a LITERAL, IDENTIFIER or DIGITs.";
-  private final String INVALID_IS_ATTRIB_ERROR_MESSAGE = " 'IS' Attribution mfinal ust be of type INTEGER, REAL or STRING.";
-  private final String INVALID_ID_ATTRIB_ERROR_MESSAGE = " 'IDENTIFIER' Attrifinal bution not ending with SEMICOLON";
-  private final String INVALID_ATTRIB_SYNTAX_ERROR_MESSAGE = "Attritution syntax error.";
-  private final String COMMA_WITHOUT_IDENTIFIER_ERROR_MESSAGE = "Comma not followed by IDENTIFIER on attribution.";
-  private final String LITERAL_WITHOUT_QUOTE_END_ERROR_MESSAGE = "LITERAL does not end with '\"'.";
-  private final String UNCLOSED_PARENTHESES_ERROR_MESSAGE = "A parentheses was open but not closed in the same line or was never closed.";
-  private final String FACTORA_END_ERROR_MESSAGE = "FACTOR-A does not contain a FACTOR, NOT FACTOR or -FACTOR.";
-  private final String INVALID_TERM_ERROR_MESSAGE = "Invalid TERM expression.";
-  private final String TERM_WITH_NO_IDENTIFIER_ERROR_MESSAGE = "TERM with no-IDENTIFIER.";
-  private final String SIMPLEEXPR_WITH_NO_FACTORA_ERROR_MESSAGE = "SIMPLE-EXPRESSION with no-FACTOR-A.";
-  private final String INVALID_SIMPLEEXPR_ERROR_MESSAGE = "Invalid SIMPLE-EXPRESSION.";
-  private final String EXPRESSION_WITH_NO_SIMPLEEXPR_ERROR_MESSAGE = "EXPRESSION with no-SIMPLE-EXPRESSION.";
-  private final String INVALID_EXPRESSION_ERROR_MESSAGE = "Invalid EXPRESSION expression.";
 
   public Validator(ArrayList<Token> tokenList) {
     this.tokenList = tokenList;
@@ -56,21 +66,22 @@ public class Validator {
     int indexOfNextTokenAfterStatementList = validateStatementList(indexOfNextTokenAfterDo) + 1;
 
     if (tokenList.get(indexOfNextTokenAfterStatementList).tag != Tag.WHILE) {
-      throw new InvalidSyntaxException("DO STATEMENT without WHILE.",
+      throw new InvalidSyntaxException(DO_STATEMENT_WITHOUT_WHILE_ERROR_MESSAGE,
           tokenList.get(indexOfNextTokenAfterStatementList).line);
     }
 
     int indexOfNextTokenAfterWhile = indexOfNextTokenAfterStatementList + 1;
 
     if (tokenList.get(indexOfNextTokenAfterWhile).tag != Tag.OPEN_PARENTHESES) {
-      throw new InvalidSyntaxException("WHILE not followed by '('.", tokenList.get(indexOfNextTokenAfterWhile).line);
+      throw new InvalidSyntaxException(WHILE_NOT_FOLLOWED_BY_PARENTHESES_ERROR_MESSAGE,
+          tokenList.get(indexOfNextTokenAfterWhile).line);
     }
 
     int indexOfNextTokenAfterParentheses = indexOfNextTokenAfterWhile + 1;
     Tuple<Integer, Boolean> validExpression = validateExpression(indexOfNextTokenAfterParentheses);
     int indexOfNextTokenAfterExpression = validExpression.key + 1;
     if (tokenList.get(indexOfNextTokenAfterExpression).tag != Tag.CLOSE_PARENTHESES) {
-      throw new InvalidSyntaxException("EXPRESSION not followed by ')'.",
+      throw new InvalidSyntaxException(EXPRESSION_NOT_FOLLOWED_BY_PARENTHESES_ERROR_MESSAGE,
           tokenList.get(indexOfNextTokenAfterExpression).line);
     }
 
@@ -105,28 +116,28 @@ public class Validator {
     case Tag.IF:
       assertion = validateIFStatement(index);
       if (!assertion.value) {
-        throw new InvalidSyntaxException("INVALID IF STATEMENT.", token.line);
+        throw new InvalidSyntaxException(INVALID_IF_STATEMENT_ERROR_MESSAGE, token.line);
       }
       index = assertion.key;
       break;
     case Tag.DO:
       assertion = validateDoStatement(index);
       if (!assertion.value) {
-        throw new InvalidSyntaxException("INVALID DO STATEMENT.", token.line);
+        throw new InvalidSyntaxException(INVALID_DO_STATEMENT_ERROR_MESSAGE, token.line);
       }
       index = assertion.key;
       break;
     case Tag.READ:
       assertion = validateReadStatement(index);
       if (!assertion.value) {
-        throw new InvalidSyntaxException("INVALID READ STATEMENT.", token.line);
+        throw new InvalidSyntaxException(INVALID_READ_STATEMENT_ERROR_MESSAGE, token.line);
       }
       index = assertion.key;
       break;
     case Tag.WRITE:
       assertion = validateWriteStatement(index);
       if (!assertion.value) {
-        throw new InvalidSyntaxException("INVALID WRITE STATEMENT.", token.line);
+        throw new InvalidSyntaxException(INVALID_WRITE_STATEMENT_ERROR_MESSAGE, token.line);
       }
       index = assertion.key;
       break;
@@ -142,20 +153,20 @@ public class Validator {
   private Tuple<Integer, Boolean> validateIFStatement(int index) throws InvalidSyntaxException {
     Token token = tokenList.get(index + 1);
     if (token.tag != Tag.OPEN_PARENTHESES) {
-      throw new InvalidSyntaxException("IF STATEMENT do not start with '('.", token.line);
+      throw new InvalidSyntaxException(IF_STATEMENT_NOT_START_WITH_PARENTHESES_ERROR_MESSAGE, token.line);
     }
     Tuple<Integer, Boolean> expressionAssertion = validateExpression(index + 1);
 
     int indexOfNextTokenAfterCondition = expressionAssertion.key + 1;
 
     if (tokenList.get(indexOfNextTokenAfterCondition).tag != Tag.CLOSE_PARENTHESES) {
-      throw new InvalidSyntaxException("IF STATEMENT do not end with ')'.", token.line);
+      throw new InvalidSyntaxException(IF_STATEMENT_NOT_END_WITH_PARENTHESES_ERROR_MESSAGE, token.line);
     }
 
     int indexOfNextTokenAfterCloseParentheses = indexOfNextTokenAfterCondition + 1;
 
     if (tokenList.get(indexOfNextTokenAfterCloseParentheses).tag != Tag.BEG) {
-      throw new InvalidSyntaxException("IF STATEMENT do not start with BEGIN.", token.line);
+      throw new InvalidSyntaxException(IF_STATEMENT_NOT_START_WITH_BEGIN_ERROR_MESSAGE, token.line);
     } else {
 
       // beginStack.push(tokenList.get(indexOfNextTokenAfterCloseParentheses));
