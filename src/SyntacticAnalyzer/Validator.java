@@ -25,24 +25,24 @@ public class Validator {
   private static final String IF_STATEMENT_NOT_START_WITH_BEGIN_ERROR_MESSAGE = "IF STATEMENT do not start with BEGIN.";
   private static final String INIT_ERROR_MESSAGE = "Code doesnt start with 'INIT'.";
   private static final String STOP_ERROR_MESSAGE = "Code doesnt finish with 'STOP'.";
-  private static final String BEGIN_ERROR_MESSAGE = "If statement not followed by BEGIN.";
-  private static final String PARENTHESES_ERROR_MESSAGE = "Error on parentheses condition.";
   private static final String NO_SEMICOLON_ERROR_MESSAGE = "Statement has no SEMICOLON.";
-  private static final String SEMICOLON_NOT_IN_THE_SAME_LINE_ERROR_MESSAGE = "SEMICOLON is missing.";
-  private static final String ATTRIB_WITHOUT_LITERAL_DIGIT_ID_ERROR_MESSAGE = "Attribution not followed by a LITERAL, IDENTIFIER or DIGITs.";
-  private static final String INVALID_IS_ATTRIB_ERROR_MESSAGE = " 'IS' Attribution must be of type INTEGER, REAL or STRING.";
-  private static final String INVALID_ID_ATTRIB_ERROR_MESSAGE = " 'IDENTIFIER' Attribution not ending with SEMICOLON";
   private static final String INVALID_ATTRIB_SYNTAX_ERROR_MESSAGE = "Attritution syntax error.";
-  private static final String COMMA_WITHOUT_IDENTIFIER_ERROR_MESSAGE = "Comma not followed by IDENTIFIER on attribution.";
-  private static final String LITERAL_WITHOUT_QUOTE_END_ERROR_MESSAGE = "LITERAL does not end with '\"'.";
   private static final String UNCLOSED_PARENTHESES_ERROR_MESSAGE = "A parentheses was open but not closed in the same line or was never closed.";
   private static final String FACTORA_END_ERROR_MESSAGE = "FACTOR-A does not contain a FACTOR, NOT FACTOR or -FACTOR.";
-  private static final String INVALID_TERM_ERROR_MESSAGE = "Invalid TERM expression.";
   private static final String TERM_WITH_NO_IDENTIFIER_ERROR_MESSAGE = "TERM with no-IDENTIFIER.";
   private static final String SIMPLEEXPR_WITH_NO_FACTORA_ERROR_MESSAGE = "SIMPLE-EXPRESSION with no-FACTOR-A.";
-  private static final String INVALID_SIMPLEEXPR_ERROR_MESSAGE = "Invalid SIMPLE-EXPRESSION.";
   private static final String EXPRESSION_WITH_NO_SIMPLEEXPR_ERROR_MESSAGE = "EXPRESSION with no-SIMPLE-EXPRESSION.";
-  private static final String INVALID_EXPRESSION_ERROR_MESSAGE = "Invalid EXPRESSION expression.";
+  private static final String WRITE_NOT_FOLLOWED_BY_PARENTHESES_ERROR_MESSAGE = "WRITE command not followed by parentheses.";
+  private static final String WRITE_WITH_NO_IDENTIFIER_ERROR_MESSAGE = "WRITE command with invalid identifier.";
+  private static final String WRITE_WITHOUT_CLOSE_PARENTHESES_ERROR_MESSAGE = "WRITE command does not end with parentheses.";
+  private static final String WRITE_WITH_NO_WRITABLE_ERROR_MESSAGE = "WRITE command with no WRITABLE value.";
+  private static final String IF_WITHOUT_END_ERROR_MESSAGE = "IF STATEMENT does not end with END.";
+  private static final String IDENTLIST_NOT_STARTING_WITH_IDENTIFIER_ERROR_MESSAGE = "IDENTLIST does not start with IDENTIFIER.";
+  private static final String IDENTLIST_WITH_NO_IS_STATEMENT_ERROR_MESSAGE = "IDENTLIST has no IS statement.";
+  private static final String IDENTLIST_WITH_NO_TYPE_ERROR_MESSAGE = "IDENTLIST has no declared TYPE";
+  private static final String PROGRAM_DO_NOT_START_INIT_ERROR_MESSAGE = "Program does not start with INIT.";
+  private static final String PROGRAM_DO_NOT_END_WITH_STOP = "Program does not end with STOP.";
+  private static final String LITERAL_NOT_BETWEEN_QUOTES_ERROR_MESSAGE = "LITERAL is not between QUOTES.";
   private ArrayList<Token> tokenList;
 
   public Validator(ArrayList<Token> tokenList) {
@@ -57,6 +57,80 @@ public class Validator {
     } else if (lastToken.tag != Tag.STOP) {
       throw new InvalidSyntaxException(STOP_ERROR_MESSAGE, lastToken.line);
     }
+  }
+
+  // program ::= init [decl-list] begin stmt-list stop
+  public int validateProgram() throws InvalidSyntaxException {
+    if (tokenList.get(0).tag != Tag.INIT) {
+      throw new InvalidSyntaxException(PROGRAM_DO_NOT_START_INIT_ERROR_MESSAGE, tokenList.get(0).line);
+    }
+
+    int indexOfNextTokenAfterInit = 1;
+    int indexOfNextTokenAfterDeclList = indexOfNextTokenAfterInit;
+    if (tokenList.get(indexOfNextTokenAfterInit).tag != Tag.BEG) {
+      indexOfNextTokenAfterDeclList = validateDeclList(indexOfNextTokenAfterInit) + 1;
+    }
+    int indexOfNextTokenAfterStatementList = validateStatementList(indexOfNextTokenAfterDeclList) + 1;
+
+    if (tokenList.get(indexOfNextTokenAfterStatementList).tag != Tag.STOP) {
+      throw new InvalidSyntaxException(PROGRAM_DO_NOT_END_WITH_STOP,
+          tokenList.get(indexOfNextTokenAfterStatementList).line);
+    }
+    return indexOfNextTokenAfterStatementList;
+  }
+
+  // decl-list ::= decl ";"
+  public int validateDeclList(int index) throws InvalidSyntaxException {
+    int indexOfNextTokenAfterDecl = validateDecl(index) + 1;
+
+    Token nextToken = tokenList.get(indexOfNextTokenAfterDecl);
+    if (nextToken.tag != Tag.SEMICOLON) {
+      throw new InvalidSyntaxException(NO_SEMICOLON_ERROR_MESSAGE, tokenList.get(index).line);
+    }
+
+    return indexOfNextTokenAfterDecl;
+  }
+
+  // decl ::= ident-list is type
+  public int validateDecl(int index) throws InvalidSyntaxException {
+
+    Tuple<Integer, Boolean> isIdentList = validateIdentList(index);
+    int indexOfNextTokenAfterIdentList = isIdentList.key;
+    if (tokenList.get(indexOfNextTokenAfterIdentList).tag != Tag.IS) {
+      throw new InvalidSyntaxException(IDENTLIST_WITH_NO_IS_STATEMENT_ERROR_MESSAGE,
+          tokenList.get(indexOfNextTokenAfterIdentList).line);
+    }
+    int indexOfNextTokenAfterIsStatement = indexOfNextTokenAfterIdentList + 1;
+    if (!isType(indexOfNextTokenAfterIsStatement)) {
+      throw new InvalidSyntaxException(IDENTLIST_WITH_NO_TYPE_ERROR_MESSAGE,
+          tokenList.get(indexOfNextTokenAfterIdentList).line);
+    }
+    return indexOfNextTokenAfterIsStatement;
+  }
+
+  // ident-list ::= identifier {"," identifier}
+  public Tuple<Integer, Boolean> validateIdentList(int index) throws InvalidSyntaxException {
+    Token token = tokenList.get(index);
+    boolean isIdentifier = isIdentifier(token);
+    if (!isIdentifier) {
+      throw new InvalidSyntaxException(IDENTLIST_NOT_STARTING_WITH_IDENTIFIER_ERROR_MESSAGE, token.line);
+    }
+
+    int indexOfNextTokenAfterIdentifier = index + 1;
+
+    int indexOfIdentListEnd = indexOfNextTokenAfterIdentifier;
+
+    if (tokenList.get(indexOfNextTokenAfterIdentifier).tag == Tag.COMMA) {
+      indexOfIdentListEnd = validateIdentList(indexOfNextTokenAfterIdentifier + 1).key;
+    }
+
+    return new Tuple<Integer, Boolean>(indexOfIdentListEnd, true);
+  }
+
+  // type ::= integer | string | real
+  public boolean isType(int index) {
+    Token currentToken = tokenList.get(index);
+    return currentToken.tag == Tag.STRING || currentToken.tag == Tag.INT || currentToken.tag == Tag.REAL;
   }
 
   // do-stmt ::= do stmt-list do-suffix
@@ -89,19 +163,50 @@ public class Validator {
   }
 
   public Tuple<Integer, Boolean> validateReadStatement(int index) throws InvalidSyntaxException {
-    int nextIndex = index;
-    return null;
+    int indexOfNextTokenAfterRead = index + 1;
+    if (tokenList.get(indexOfNextTokenAfterRead).tag != Tag.OPEN_PARENTHESES) {
+      throw new InvalidSyntaxException(WRITE_NOT_FOLLOWED_BY_PARENTHESES_ERROR_MESSAGE,
+          tokenList.get(indexOfNextTokenAfterRead).line);
+    }
+    int indexOfNextTokenAfterParentheses = indexOfNextTokenAfterRead + 1;
+    if (!isIdentifier(tokenList.get(indexOfNextTokenAfterParentheses))) {
+      throw new InvalidSyntaxException(WRITE_WITH_NO_IDENTIFIER_ERROR_MESSAGE,
+          tokenList.get(indexOfNextTokenAfterParentheses).line);
+    }
+    int indexOfNextTokenAfterIdentifier = indexOfNextTokenAfterParentheses + 1;
+    if (tokenList.get(indexOfNextTokenAfterIdentifier).tag != Tag.CLOSE_PARENTHESES) {
+      throw new InvalidSyntaxException(WRITE_WITHOUT_CLOSE_PARENTHESES_ERROR_MESSAGE,
+          tokenList.get(indexOfNextTokenAfterIdentifier).line);
+    }
+
+    return new Tuple<Integer, Boolean>(indexOfNextTokenAfterIdentifier, true);
   }
 
   public Tuple<Integer, Boolean> validateWriteStatement(int index) throws InvalidSyntaxException {
-    int nextIndex = index;
-    return null;
+    int indexOfNextTokenAfterWrite = index + 1;
+    if (tokenList.get(indexOfNextTokenAfterWrite).tag != Tag.OPEN_PARENTHESES) {
+      throw new InvalidSyntaxException(WRITE_NOT_FOLLOWED_BY_PARENTHESES_ERROR_MESSAGE,
+          tokenList.get(indexOfNextTokenAfterWrite).line);
+    }
+    int indexOfNextTokenAfterParentheses = validateSimpleExpr(indexOfNextTokenAfterWrite).key + 1;
+    if (!isIdentifier(tokenList.get(indexOfNextTokenAfterParentheses))) {
+      throw new InvalidSyntaxException(WRITE_WITH_NO_WRITABLE_ERROR_MESSAGE,
+          tokenList.get(indexOfNextTokenAfterWrite).line);
+    }
+    int indexOfNextTokenAfterIdentifier = indexOfNextTokenAfterParentheses + 1;
+    if (tokenList.get(indexOfNextTokenAfterIdentifier).tag != Tag.CLOSE_PARENTHESES) {
+      throw new InvalidSyntaxException(WRITE_WITHOUT_CLOSE_PARENTHESES_ERROR_MESSAGE,
+          tokenList.get(indexOfNextTokenAfterIdentifier).line);
+    }
+
+    return new Tuple<Integer, Boolean>(indexOfNextTokenAfterIdentifier, true);
   }
 
   // stmt-list ::= stmt ";" { stmt ";" }
   public int validateStatementList(int index) throws InvalidSyntaxException {
     int indexOfNextTokenAfterStatement = validateStatement(index) + 1;
-    if (tokenList.get(indexOfNextTokenAfterStatement).tag != Tag.SEMICOLON) {
+    Token nextToken = tokenList.get(indexOfNextTokenAfterStatement);
+    if (nextToken.tag != Tag.SEMICOLON) {
       throw new InvalidSyntaxException(NO_SEMICOLON_ERROR_MESSAGE, tokenList.get(index).line);
     }
 
@@ -142,7 +247,9 @@ public class Validator {
       index = assertion.key;
       break;
     default:
-      if (!validateAssignStatement(index).value) {
+      Tuple<Integer, Boolean> isValidAssignStatement = validateAssignStatement(index);
+      index = isValidAssignStatement.key;
+      if (!isValidAssignStatement.value) {
         throw new InvalidSyntaxException(INVALID_ATTRIB_SYNTAX_ERROR_MESSAGE, token.line);
       }
       break;
@@ -175,7 +282,7 @@ public class Validator {
       int indexOfNextTokenAfterStatementList = validateStatementList(indexOfNextTokenAfterBegin) + 1;
 
       if (tokenList.get(indexOfNextTokenAfterStatementList).tag != Tag.END) {
-        throw new InvalidSyntaxException("IF STATEMENT do not end with END.", token.line);
+        throw new InvalidSyntaxException(IF_WITHOUT_END_ERROR_MESSAGE, token.line);
       }
 
       int indexOfNextTokenAfterEnd = indexOfNextTokenAfterStatementList + 1;
@@ -201,22 +308,7 @@ public class Validator {
     int indexOfNextTokenAfterAttribution = indexOfNextTokenAfterIdentifier + 1;
 
     index = validateSimpleExpr(indexOfNextTokenAfterAttribution).key;
-    return new Tuple<Integer, Boolean>(indexOfToken(index, Tag.SEMICOLON), true);
-  }
-
-  public Tuple<String, Integer> buildLiteralString(ArrayList<Token> statementList, int index)
-      throws InvalidSyntaxException {
-    String literalString = "\"";
-    int lastIndex = index;
-    for (int i = index + 1; i < statementList.size() && statementList.get(i).tag != Tag.QUOTE; i++, lastIndex++) {
-      literalString += ((Word) statementList.get(i)).toString() + ' ';
-    }
-    literalString += "\"";
-    Token lastToken = statementList.get(lastIndex + 1);
-    if (lastToken.tag != Tag.QUOTE) {
-      throw new InvalidSyntaxException(LITERAL_WITHOUT_QUOTE_END_ERROR_MESSAGE, lastToken.line);
-    }
-    return new Tuple<String, Integer>(literalString, lastIndex + 1);
+    return new Tuple<Integer, Boolean>(index, true);
   }
 
   public int indexOfToken(int startIndex, int tag) {
@@ -235,10 +327,6 @@ public class Validator {
     Pattern pattern = Pattern.compile(patternString, Pattern.CASE_INSENSITIVE);
     Matcher matcher = pattern.matcher(str);
     return matcher.find();
-  }
-
-  private boolean isType(Token token) {
-    return token.tag == Tag.STRING || token.tag == Tag.INT || token.tag == Tag.REAL;
   }
 
   // caractere := um dos 256 caracteres do conjunto ASCII, exceto as aspas e
@@ -317,8 +405,8 @@ public class Validator {
     Token token = tokenList.get(index);
     boolean assertion = false;
     if (token.tag != Tag.OPEN_PARENTHESES) {
-      assertion = isIdentifier(token) || isConst(token);
-      return new Tuple<Integer, Boolean>(index + 1, assertion);
+      assertion = isIdentifier(token) || isConst(index);
+      return new Tuple<Integer, Boolean>(index, assertion);
     } else {
       int indexOfFirstCloseParentheses = indexOfToken(index, Tag.CLOSE_PARENTHESES);
       assertion = validateExpression(index + 1).value && validateParentheses(index, indexOfFirstCloseParentheses);
@@ -354,12 +442,13 @@ public class Validator {
   }
 
   // constant := integer_const | litera
-  private boolean isConst(Token token) {
-    return isIntegerConst(token) || isLiteral(token);
+  private boolean isConst(int index) {
+    return isIntegerConst(index) || validadeLiteral(index);
   }
 
   // nteger_const := nonzero {digit} | “0”
-  private boolean isIntegerConst(Token token) {
+  private boolean isIntegerConst(int index) {
+    Token token = tokenList.get(index);
     return isNonZeroDigit(token) || token.toString() == "0";
   }
 
@@ -395,12 +484,25 @@ public class Validator {
   }
 
   // literal := " “ " caractere* " ” "
-  private boolean isLiteral(Token token) {
-    return strIsLiteral(token.toString());
+  private boolean validadeLiteral(int index) {
+    if(tokenList.get(index).tag != Tag.QUOTE) {
+      return false;
+    }
+
+    int indexOfNextTokenAfterQuote = index + 1;
+    
+    int indexOfNextTokenAfterConsumeString = consumeCharacter(indexOfNextTokenAfterQuote) + 1;
+
+    if (tokenList.get(indexOfNextTokenAfterConsumeString).tag != Tag.QUOTE) {
+      return false;
+    }
+  
+   return true;
   }
 
-  private boolean strIsLiteral(String str) {
-    String letterPattern = "(^\"([A-Za-z]|\s|[0-9])*\"$)";
-    return validatePattern(str, letterPattern);
+  private int consumeCharacter(int index) {
+    int currentIndex;
+    for (currentIndex = index; tokenList.get(currentIndex).tag < 256; currentIndex++) {};
+    return currentIndex;
   }
 }

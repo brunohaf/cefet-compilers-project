@@ -85,9 +85,14 @@ public class Lexer {
 
     public Token scan() throws IOException {
         // Desconsidera delimitadores na entrada
+        boolean isCommentSection = false;
         for (;; readch()) {
-            if (ch == ' ' || ch == '\t' || ch == '\r' || ch == '\b')
+            if (ch == ' ' || ch == '\t' || ch == '\r' || ch == '\b' || isCommentSection)
                 continue;
+            else if (ch == '%') {
+                isCommentSection = !isCommentSection;
+                continue;
+            }
             else if (ch == '\n')
                 line++; // conta linhas
             else
