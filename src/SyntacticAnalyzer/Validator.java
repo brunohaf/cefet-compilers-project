@@ -1,14 +1,12 @@
 package SyntacticAnalyzer;
 
 import java.util.ArrayList;
-import java.util.Stack;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import Exceptions.InvalidSyntaxException;
 import Models.Tag;
 import Models.Token;
-import Models.Word;
 import Models.Utils.Tuple;
 
 public class Validator {
@@ -420,7 +418,7 @@ public class Validator {
   private Tuple<Integer, Boolean> validateFactorA(int index) throws InvalidSyntaxException {
     Token token = tokenList.get(index);
     String lexem = token.toString();
-    if (lexem == "-" || lexem == "not") {
+    if (lexem.equals("-") || lexem.equals("not")) {
       index++;
     }
     Tuple<Integer, Boolean> isFactor = validateFactor(index);
@@ -471,7 +469,7 @@ public class Validator {
   // integer_const := nonzero {digit} | “0”
   private boolean isIntegerConst(int index) {
     Token token = tokenList.get(index);
-    return isNonZeroDigit(index) || token.toString() == "0";
+    return isNonZeroDigit(index) || token.toString().equals("0");
   }
 
   // real_const := interger_const "." digit+
@@ -523,7 +521,7 @@ public class Validator {
   // relop := "=" | ">" | ">=" | "<" | "<=" | "<>"
   private boolean validateRelOp(Token token) {
     String lexem = token.toString();
-    return lexem == "=" || lexem == ">" || lexem == ">=" || lexem == "<" || lexem == "<=" || lexem == "<>";
+    return lexem.equals("=") || lexem.equals(">") || lexem.equals(">=") || lexem.equals("<") || lexem.equals("<=") || lexem.equals("<>");
   }
 
   // mulop := "*" | "/" | and
