@@ -1,7 +1,7 @@
 init
 begin
  b := 10.5;
- result := (a * c)/(b + 5 - 345);
+ result := (b + 5 - 345);
  write("O resultado e:");
  write(result);
 stop

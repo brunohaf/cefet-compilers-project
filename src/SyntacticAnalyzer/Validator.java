@@ -46,10 +46,15 @@ public class Validator {
   private static final String REAL_CONST_NOT_STARTING_WITH_INTEGER_CONST = null;
   private static final String REAL_CONST_NOT_STARTING_WITH_INTEGER_CONST_ERROR_MESSAGE = null;
   private static final String REAL_CONST_HAS_NO_DOT_ERROR_MESSAGE = null;
+  private static final String SIMPLEEXPR_WITH_NO_ADDOP_ERROR_MESSAGE = null;
+  private static final String INVALID_TERM_ERROR_MESSAGE = null;
+  private static final String INVALID_SIMPLEEXPR_ERROR_MESSAGE = null;
   private ArrayList<Token> tokenList;
+  private Stack<Token> lambdaStk;
 
   public Validator(ArrayList<Token> tokenList) {
     this.tokenList = tokenList;
+    this.lambdaStk = new Stack<Token>();
   }
 
   public void validateInitStop() throws InvalidSyntaxException {
@@ -213,9 +218,9 @@ public class Validator {
       throw new InvalidSyntaxException(NO_SEMICOLON_ERROR_MESSAGE, tokenList.get(index).line);
     }
 
-    int indexOfNextTokenSemicolon = indexOfNextTokenAfterStatement+1;
+    int indexOfNextTokenSemicolon = indexOfNextTokenAfterStatement + 1;
 
-    if(tokenList.get(indexOfNextTokenSemicolon).tag != Tag.STOP && indexOfNextTokenSemicolon < tokenList.size()) {
+    if (tokenList.get(indexOfNextTokenSemicolon).tag != Tag.STOP && indexOfNextTokenSemicolon < tokenList.size()) {
       validateStatementList(indexOfNextTokenSemicolon);
     }
 
@@ -354,44 +359,78 @@ public class Validator {
   private Tuple<Integer, Boolean> validateExpression(int index) throws InvalidSyntaxException {
     int termIndex = index + 1;
     Tuple<Integer, Boolean> isSimpleExpr = validateSimpleExpr(termIndex);
-
-    if (!isSimpleExpr.value || termIndex > tokenList.size()) {
+    if (isSimpleExpr.value) {
+      int indexOfNextTokenAfterSimplExpression = isSimpleExpr.key + 1;
+      if (validateRelOp(tokenList.get(indexOfNextTokenAfterSimplExpression))) {
+        int indexOfNextTokenAfterRelOp = indexOfNextTokenAfterSimplExpression + 1;
+        Tuple<Integer, Boolean> isSimpleExpr2 = validateSimpleExpr(indexOfNextTokenAfterRelOp);
+        if (!isSimpleExpr2.value) {
+          throw new InvalidSyntaxException(EXPRESSION_WITH_NO_SIMPLEEXPR_ERROR_MESSAGE, tokenList.get(index).line);
+        } else {
+          return isSimpleExpr2;
+        }
+      } else {
+        return isSimpleExpr;
+      }
+    } else {
       throw new InvalidSyntaxException(EXPRESSION_WITH_NO_SIMPLEEXPR_ERROR_MESSAGE, tokenList.get(index).line);
     }
-    if (validateRelOp(tokenList.get(termIndex))) {
-      Tuple<Integer, Boolean> isSimpleExpr2 = validateSimpleExpr(termIndex + 1);
-      return new Tuple<Integer, Boolean>(termIndex, isSimpleExpr2.value);
-    }
-    return isSimpleExpr;
   }
 
-  // simple-expr := term | simple-expr addop term
+  // simple-expr := term simpl-expr2
   private Tuple<Integer, Boolean> validateSimpleExpr(int index) throws InvalidSyntaxException {
-    int termIndex = index + 1;
     Tuple<Integer, Boolean> isTerm = validateTerm(index);
 
-    if (!isTerm.value || termIndex > tokenList.size()) {
-      throw new InvalidSyntaxException(SIMPLEEXPR_WITH_NO_FACTORA_ERROR_MESSAGE, tokenList.get(index).line);
+    if (isTerm.value) {
+      int indexOfNextTokenAfterTerm = isTerm.key + 1;
+      return validateSimpleExpr2(indexOfNextTokenAfterTerm);
+    } else {
+      throw new InvalidSyntaxException(INVALID_SIMPLEEXPR_ERROR_MESSAGE, tokenList.get(isTerm.key).line);
     }
-    if (validateAddOp(tokenList.get(termIndex))) {
-      Tuple<Integer, Boolean> isSimpleExpr = validateSimpleExpr(termIndex + 1);
-      return new Tuple<Integer, Boolean>(termIndex, isSimpleExpr.value);
-    }
-    return isTerm;
   }
 
-  // term := factorA | term mulop factorA
+  // simpl-expr2 := addop term simpl-expr2 | lambda
+  private Tuple<Integer, Boolean> validateSimpleExpr2(int index) throws InvalidSyntaxException {
+    if (validateAddOp(tokenList.get(index))) {
+      int indexOfNextTokenAfterAddop = index + 1;
+      Tuple<Integer, Boolean> isTerm = validateTerm(indexOfNextTokenAfterAddop);
+      if (isTerm.value) {
+        int indexOfNextTokenAfterTerm = indexOfNextTokenAfterAddop + 1;
+        return validateSimpleExpr2(indexOfNextTokenAfterTerm);
+      } else {
+        throw new InvalidSyntaxException(INVALID_SIMPLEEXPR_ERROR_MESSAGE,
+            tokenList.get(indexOfNextTokenAfterAddop).line);
+      }
+    } else {
+      return new Tuple<Integer, Boolean>(index - 1, true);
+    }
+  }
+
+  // term := factorA term2
   private Tuple<Integer, Boolean> validateTerm(int index) throws InvalidSyntaxException {
-    int nextIndex = index + 1;
     Tuple<Integer, Boolean> isFactorA = validateFactorA(index);
-    if (!isFactorA.value || nextIndex > tokenList.size()) {
-      throw new InvalidSyntaxException(TERM_WITH_NO_IDENTIFIER_ERROR_MESSAGE, tokenList.get(index).line);
+    if (isFactorA.value) {
+      int indexOfNextTokenAfterFactorA = isFactorA.key + 1;
+      return validateTerm2(indexOfNextTokenAfterFactorA);
+    } else {
+      throw new InvalidSyntaxException(INVALID_TERM_ERROR_MESSAGE, tokenList.get(index).line);
     }
-    if (validateMulOp(tokenList.get(nextIndex))) {
-      Tuple<Integer, Boolean> isTerm = validateTerm(nextIndex + 1);
-      return new Tuple<Integer, Boolean>(nextIndex, isTerm.value);
+  }
+
+  // term2 := mulop factorA term2 | lambda
+  private Tuple<Integer, Boolean> validateTerm2(int index) throws InvalidSyntaxException {
+    if (validateMulOp(tokenList.get(index))) {
+      int indexOfNextTokenAfterMulop = index + 1;
+      Tuple<Integer, Boolean> isFactorA = validateFactorA(indexOfNextTokenAfterMulop);
+      if (isFactorA.value) {
+        int indexOfNextTokenAfterFactorA = indexOfNextTokenAfterMulop + 1;
+        return validateTerm2(indexOfNextTokenAfterFactorA);
+      } else {
+        throw new InvalidSyntaxException(INVALID_TERM_ERROR_MESSAGE, tokenList.get(index).line);
+      }
+    } else {
+      return new Tuple<Integer, Boolean>(index - 1, true);
     }
-    return isFactorA;
   }
 
   // factor-a := factor | not factor | "-" factor
@@ -507,13 +546,13 @@ public class Validator {
   // mulop := "*" | "/" | and
   private boolean validateMulOp(Token token) {
     String lexem = token.toString();
-    return lexem == "*" || lexem == "/" || lexem == "and";
+    return lexem.equals("*") || lexem.equals("/") || lexem.equals("and");
   }
 
   // addop := "+" | "-" | or
   private boolean validateAddOp(Token token) {
     String lexem = token.toString();
-    return lexem == "+" || lexem == "-" || lexem == "or";
+    return lexem.equals("+") || lexem.equals("-") || lexem.equals("or");
   }
 
   // literal := " “ " caractere* " ” "
