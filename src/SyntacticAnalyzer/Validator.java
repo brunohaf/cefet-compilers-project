@@ -49,6 +49,8 @@ public class Validator {
   private static final String SIMPLEEXPR_WITH_NO_ADDOP_ERROR_MESSAGE = null;
   private static final String INVALID_TERM_ERROR_MESSAGE = null;
   private static final String INVALID_SIMPLEEXPR_ERROR_MESSAGE = null;
+  private static final String READ_WITHOUT_CLOSE_PARENTHESES_ERROR_MESSAGE = null;
+  private static final String READ_NOT_FOLLOWED_BY_PARENTHESES_ERROR_MESSAGE = null;
   private ArrayList<Token> tokenList;
   private Stack<Token> lambdaStk;
 
@@ -173,41 +175,32 @@ public class Validator {
   public Tuple<Integer, Boolean> validateReadStatement(int index) throws InvalidSyntaxException {
     int indexOfNextTokenAfterRead = index + 1;
     if (tokenList.get(indexOfNextTokenAfterRead).tag != Tag.OPEN_PARENTHESES) {
-      throw new InvalidSyntaxException(WRITE_NOT_FOLLOWED_BY_PARENTHESES_ERROR_MESSAGE,
+      throw new InvalidSyntaxException(READ_NOT_FOLLOWED_BY_PARENTHESES_ERROR_MESSAGE,
           tokenList.get(indexOfNextTokenAfterRead).line);
     }
-    int indexOfNextTokenAfterParentheses = indexOfNextTokenAfterRead + 1;
-    if (!isIdentifier(indexOfNextTokenAfterParentheses)) {
-      throw new InvalidSyntaxException(WRITE_WITH_NO_IDENTIFIER_ERROR_MESSAGE,
-          tokenList.get(indexOfNextTokenAfterParentheses).line);
-    }
-    int indexOfNextTokenAfterIdentifier = indexOfNextTokenAfterParentheses + 1;
-    if (tokenList.get(indexOfNextTokenAfterIdentifier).tag != Tag.CLOSE_PARENTHESES) {
-      throw new InvalidSyntaxException(WRITE_WITHOUT_CLOSE_PARENTHESES_ERROR_MESSAGE,
-          tokenList.get(indexOfNextTokenAfterIdentifier).line);
+    int indexOfNextTokenAfterSimpleExpr = validateSimpleExpr(indexOfNextTokenAfterRead).key;
+    if (tokenList.get(indexOfNextTokenAfterSimpleExpr).tag != Tag.CLOSE_PARENTHESES) {
+      throw new InvalidSyntaxException(READ_WITHOUT_CLOSE_PARENTHESES_ERROR_MESSAGE,
+          tokenList.get(indexOfNextTokenAfterRead).line);
     }
 
-    return new Tuple<Integer, Boolean>(indexOfNextTokenAfterIdentifier, true);
+    return new Tuple<Integer, Boolean>(indexOfNextTokenAfterSimpleExpr, true);
   }
 
+  // write-stmt ::= write "(" writable ")"
   public Tuple<Integer, Boolean> validateWriteStatement(int index) throws InvalidSyntaxException {
     int indexOfNextTokenAfterWrite = index + 1;
     if (tokenList.get(indexOfNextTokenAfterWrite).tag != Tag.OPEN_PARENTHESES) {
       throw new InvalidSyntaxException(WRITE_NOT_FOLLOWED_BY_PARENTHESES_ERROR_MESSAGE,
           tokenList.get(indexOfNextTokenAfterWrite).line);
     }
-    int indexOfNextTokenAfterParentheses = validateSimpleExpr(indexOfNextTokenAfterWrite).key + 1;
-    if (!isIdentifier(indexOfNextTokenAfterParentheses)) {
-      throw new InvalidSyntaxException(WRITE_WITH_NO_WRITABLE_ERROR_MESSAGE,
+    int indexOfNextTokenAfterSimpleExpr = validateSimpleExpr(indexOfNextTokenAfterWrite).key;
+    if (tokenList.get(indexOfNextTokenAfterSimpleExpr).tag != Tag.CLOSE_PARENTHESES) {
+      throw new InvalidSyntaxException(WRITE_WITHOUT_CLOSE_PARENTHESES_ERROR_MESSAGE,
           tokenList.get(indexOfNextTokenAfterWrite).line);
     }
-    int indexOfNextTokenAfterIdentifier = indexOfNextTokenAfterParentheses + 1;
-    if (tokenList.get(indexOfNextTokenAfterIdentifier).tag != Tag.CLOSE_PARENTHESES) {
-      throw new InvalidSyntaxException(WRITE_WITHOUT_CLOSE_PARENTHESES_ERROR_MESSAGE,
-          tokenList.get(indexOfNextTokenAfterIdentifier).line);
-    }
 
-    return new Tuple<Integer, Boolean>(indexOfNextTokenAfterIdentifier, true);
+    return new Tuple<Integer, Boolean>(indexOfNextTokenAfterSimpleExpr, true);
   }
 
   // stmt-list ::= stmt ";" { stmt ";" }
@@ -562,7 +555,7 @@ public class Validator {
     }
     int indexOfNextTokenAfterQuote = index + 1;
 
-    int indexOfNextTokenAfterConsumeString = consumeCharacter(indexOfNextTokenAfterQuote) + 1;
+    int indexOfNextTokenAfterConsumeString = consumeCharacter(indexOfNextTokenAfterQuote);
 
     if (tokenList.get(indexOfNextTokenAfterConsumeString).tag != Tag.QUOTE) {
       return new Tuple<Integer, Boolean>(indexOfNextTokenAfterConsumeString, false);
@@ -572,7 +565,7 @@ public class Validator {
 
   private int consumeCharacter(int index) {
     int currentIndex;
-    for (currentIndex = index; tokenList.get(currentIndex).tag < 256; currentIndex++) {
+    for (currentIndex = index; tokenList.get(currentIndex).toString().charAt(0) < 256; currentIndex++) {
     }
     ;
     return currentIndex;
