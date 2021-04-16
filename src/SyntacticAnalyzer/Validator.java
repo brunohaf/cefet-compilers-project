@@ -43,6 +43,9 @@ public class Validator {
   private static final String PROGRAM_DO_NOT_START_INIT_ERROR_MESSAGE = "Program does not start with INIT.";
   private static final String PROGRAM_DO_NOT_END_WITH_STOP = "Program does not end with STOP.";
   private static final String LITERAL_NOT_BETWEEN_QUOTES_ERROR_MESSAGE = "LITERAL is not between QUOTES.";
+  private static final String REAL_CONST_NOT_STARTING_WITH_INTEGER_CONST = null;
+  private static final String REAL_CONST_NOT_STARTING_WITH_INTEGER_CONST_ERROR_MESSAGE = null;
+  private static final String REAL_CONST_HAS_NO_DOT_ERROR_MESSAGE = null;
   private ArrayList<Token> tokenList;
 
   public Validator(ArrayList<Token> tokenList) {
@@ -68,9 +71,9 @@ public class Validator {
     int indexOfNextTokenAfterInit = 1;
     int indexOfNextTokenAfterDeclList = indexOfNextTokenAfterInit;
     if (tokenList.get(indexOfNextTokenAfterInit).tag != Tag.BEG) {
-      indexOfNextTokenAfterDeclList = validateDeclList(indexOfNextTokenAfterInit) + 1;
+      indexOfNextTokenAfterDeclList = validateDeclList(indexOfNextTokenAfterInit);
     }
-    int indexOfNextTokenAfterStatementList = validateStatementList(indexOfNextTokenAfterDeclList) + 1;
+    int indexOfNextTokenAfterStatementList = validateStatementList(indexOfNextTokenAfterDeclList + 1) + 1;
 
     if (tokenList.get(indexOfNextTokenAfterStatementList).tag != Tag.STOP) {
       throw new InvalidSyntaxException(PROGRAM_DO_NOT_END_WITH_STOP,
@@ -111,7 +114,7 @@ public class Validator {
   // ident-list ::= identifier {"," identifier}
   public Tuple<Integer, Boolean> validateIdentList(int index) throws InvalidSyntaxException {
     Token token = tokenList.get(index);
-    boolean isIdentifier = isIdentifier(token);
+    boolean isIdentifier = isIdentifier(index);
     if (!isIdentifier) {
       throw new InvalidSyntaxException(IDENTLIST_NOT_STARTING_WITH_IDENTIFIER_ERROR_MESSAGE, token.line);
     }
@@ -169,7 +172,7 @@ public class Validator {
           tokenList.get(indexOfNextTokenAfterRead).line);
     }
     int indexOfNextTokenAfterParentheses = indexOfNextTokenAfterRead + 1;
-    if (!isIdentifier(tokenList.get(indexOfNextTokenAfterParentheses))) {
+    if (!isIdentifier(indexOfNextTokenAfterParentheses)) {
       throw new InvalidSyntaxException(WRITE_WITH_NO_IDENTIFIER_ERROR_MESSAGE,
           tokenList.get(indexOfNextTokenAfterParentheses).line);
     }
@@ -189,7 +192,7 @@ public class Validator {
           tokenList.get(indexOfNextTokenAfterWrite).line);
     }
     int indexOfNextTokenAfterParentheses = validateSimpleExpr(indexOfNextTokenAfterWrite).key + 1;
-    if (!isIdentifier(tokenList.get(indexOfNextTokenAfterParentheses))) {
+    if (!isIdentifier(indexOfNextTokenAfterParentheses)) {
       throw new InvalidSyntaxException(WRITE_WITH_NO_WRITABLE_ERROR_MESSAGE,
           tokenList.get(indexOfNextTokenAfterWrite).line);
     }
@@ -208,6 +211,12 @@ public class Validator {
     Token nextToken = tokenList.get(indexOfNextTokenAfterStatement);
     if (nextToken.tag != Tag.SEMICOLON) {
       throw new InvalidSyntaxException(NO_SEMICOLON_ERROR_MESSAGE, tokenList.get(index).line);
+    }
+
+    int indexOfNextTokenSemicolon = indexOfNextTokenAfterStatement+1;
+
+    if(tokenList.get(indexOfNextTokenSemicolon).tag != Tag.STOP && indexOfNextTokenSemicolon < tokenList.size()) {
+      validateStatementList(indexOfNextTokenSemicolon);
     }
 
     return indexOfNextTokenAfterStatement;
@@ -295,7 +304,7 @@ public class Validator {
   public Tuple<Integer, Boolean> validateAssignStatement(int index) throws InvalidSyntaxException {
     Token token = tokenList.get(index);
 
-    if (!isIdentifier(token)) {
+    if (!isIdentifier(index)) {
       throw new InvalidSyntaxException(INVALID_ATTRIB_SYNTAX_ERROR_MESSAGE, token.line);
     }
 
@@ -344,7 +353,7 @@ public class Validator {
   // expression := simple-expr | simple-expr relop simple-expr
   private Tuple<Integer, Boolean> validateExpression(int index) throws InvalidSyntaxException {
     int termIndex = index + 1;
-    Tuple<Integer, Boolean> isSimpleExpr = validateSimpleExpr(index);
+    Tuple<Integer, Boolean> isSimpleExpr = validateSimpleExpr(termIndex);
 
     if (!isSimpleExpr.value || termIndex > tokenList.size()) {
       throw new InvalidSyntaxException(EXPRESSION_WITH_NO_SIMPLEEXPR_ERROR_MESSAGE, tokenList.get(index).line);
@@ -403,14 +412,19 @@ public class Validator {
   // factor := identifier | constant | "(" expression ")"
   private Tuple<Integer, Boolean> validateFactor(int index) throws InvalidSyntaxException {
     Token token = tokenList.get(index);
-    boolean assertion = false;
     if (token.tag != Tag.OPEN_PARENTHESES) {
-      assertion = isIdentifier(token) || isConst(index);
-      return new Tuple<Integer, Boolean>(index, assertion);
+      Tuple<Integer, Boolean> isConst = isConst(index);
+      boolean assertion = !isIdentifier(index) && !isConst.value;
+      if (assertion) {
+        return new Tuple<Integer, Boolean>(index, false);
+      }
+      return new Tuple<Integer, Boolean>(isConst.value ? isConst.key : index, true);
     } else {
-      int indexOfFirstCloseParentheses = indexOfToken(index, Tag.CLOSE_PARENTHESES);
-      assertion = validateExpression(index + 1).value && validateParentheses(index, indexOfFirstCloseParentheses);
-      return new Tuple<Integer, Boolean>(indexOfFirstCloseParentheses, assertion);
+      int indexOfNextTokenAfterExpression = validateExpression(index).key + 1;
+      if (tokenList.get(indexOfNextTokenAfterExpression).tag != Tag.CLOSE_PARENTHESES) {
+        return new Tuple<Integer, Boolean>(indexOfNextTokenAfterExpression, false);
+      }
+      return new Tuple<Integer, Boolean>(indexOfNextTokenAfterExpression, true);
     }
   }
 
@@ -421,6 +435,67 @@ public class Validator {
     } else {
       throw new InvalidSyntaxException(UNCLOSED_PARENTHESES_ERROR_MESSAGE, tokenList.get(startIndex).line);
     }
+  }
+
+  // constant := integer_const | real_const | literal
+  private Tuple<Integer, Boolean> isConst(int index) throws InvalidSyntaxException {
+    Tuple<Integer, Boolean> isLiteral = validateLiteral(index);
+    Tuple<Integer, Boolean> isRealConst = validateRealConst(index);
+    boolean isConst = isIntegerConst(index);
+    int returnIndex = isLiteral.value ? isLiteral.key : isRealConst.value ? isRealConst.key : index;
+    return new Tuple<Integer, Boolean>(returnIndex, isConst || isLiteral.value || isRealConst.value);
+  }
+
+  // integer_const := nonzero {digit} | “0”
+  private boolean isIntegerConst(int index) {
+    Token token = tokenList.get(index);
+    return isNonZeroDigit(index) || token.toString() == "0";
+  }
+
+  // real_const := interger_const "." digit+
+  private Tuple<Integer, Boolean> validateRealConst(int index) throws InvalidSyntaxException {
+    if (!isIntegerConst(index)) {
+      return new Tuple<Integer, Boolean>(index, false);
+    }
+
+    int indexOfNextTokenAfterInteger = index + 1;
+    if (tokenList.get(indexOfNextTokenAfterInteger).tag != Tag.DOT) {
+      return new Tuple<Integer, Boolean>(index, false);
+    }
+    int indexOfNextTokenAfterDot = indexOfNextTokenAfterInteger + 1;
+
+    if (!isDigit(indexOfNextTokenAfterDot)) {
+      return new Tuple<Integer, Boolean>(index, false);
+    }
+    return new Tuple<Integer, Boolean>(indexOfNextTokenAfterDot, true);
+  }
+
+  // digit := [0-9]+
+  private boolean isDigit(int index) {
+    Token token = tokenList.get(index);
+    String digitPattern = "[0-9]+";
+    return validatePattern(token.toString(), digitPattern);
+  }
+
+  // nonZero := [1-9]+
+  private boolean isNonZeroDigit(int index) {
+    Token token = tokenList.get(index);
+    String nonZeroDigitPattern = "[1-9]+";
+    return validatePattern(token.toString(), nonZeroDigitPattern);
+  }
+
+  // letter := [A-Za-z]
+  private boolean isLetter(int index) {
+    Token token = tokenList.get(index);
+    String letterPattern = "[A-Za-z]+";
+    return validatePattern(token.toString(), letterPattern);
+  }
+
+  // identifier := letter {letter | digit | " _ " }
+  private boolean isIdentifier(int index) {
+    Token token = tokenList.get(index);
+    String letterPattern = "(^(^[A-Za-z]([A-Za-z0-9]|_)*)+$)";
+    return validatePattern(token.toString(), letterPattern);
   }
 
   // relop := "=" | ">" | ">=" | "<" | "<=" | "<>"
@@ -441,68 +516,26 @@ public class Validator {
     return lexem == "+" || lexem == "-" || lexem == "or";
   }
 
-  // constant := integer_const | litera
-  private boolean isConst(int index) {
-    return isIntegerConst(index) || validadeLiteral(index);
-  }
-
-  // nteger_const := nonzero {digit} | “0”
-  private boolean isIntegerConst(int index) {
-    Token token = tokenList.get(index);
-    return isNonZeroDigit(token) || token.toString() == "0";
-  }
-
-  // real_const := interger_const "." digit+
-  private boolean isRealConst(Token token) {
-    String lexem = ((Word) token).toString();
-    String[] splittedLexem = lexem.split(".");
-    return isIntegerConst(new Word(splittedLexem[0], Tag.REAL)) && isDigit(new Word(splittedLexem[1], Tag.NUM));
-  }
-
-  // digit := [0-9]+
-  private boolean isDigit(Token token) {
-    String digitPattern = "[0-9]+";
-    return validatePattern(token.toString(), digitPattern);
-  }
-
-  // nonZero := [1-9]+
-  private boolean isNonZeroDigit(Token token) {
-    String nonZeroDigitPattern = "[1-9]+";
-    return validatePattern(token.toString(), nonZeroDigitPattern);
-  }
-
-  // letter := [A-Za-z]
-  private boolean isLetter(Token token) {
-    String letterPattern = "[A-Za-z]+";
-    return validatePattern(token.toString(), letterPattern);
-  }
-
-  // identifier := letter {letter | digit | " _ " }
-  private boolean isIdentifier(Token token) {
-    String letterPattern = "(^(^[A-Za-z]([A-Za-z0-9]|_)*)+$)";
-    return validatePattern(token.toString(), letterPattern);
-  }
-
   // literal := " “ " caractere* " ” "
-  private boolean validadeLiteral(int index) {
-    if(tokenList.get(index).tag != Tag.QUOTE) {
-      return false;
+  private Tuple<Integer, Boolean> validateLiteral(int index) throws InvalidSyntaxException {
+    if (tokenList.get(index).tag != Tag.QUOTE) {
+      return new Tuple<Integer, Boolean>(index, false);
     }
-
     int indexOfNextTokenAfterQuote = index + 1;
-    
+
     int indexOfNextTokenAfterConsumeString = consumeCharacter(indexOfNextTokenAfterQuote) + 1;
 
     if (tokenList.get(indexOfNextTokenAfterConsumeString).tag != Tag.QUOTE) {
-      return false;
+      return new Tuple<Integer, Boolean>(indexOfNextTokenAfterConsumeString, false);
     }
-  
-   return true;
+    return new Tuple<Integer, Boolean>(indexOfNextTokenAfterConsumeString, true);
   }
 
   private int consumeCharacter(int index) {
     int currentIndex;
-    for (currentIndex = index; tokenList.get(currentIndex).tag < 256; currentIndex++) {};
+    for (currentIndex = index; tokenList.get(currentIndex).tag < 256; currentIndex++) {
+    }
+    ;
     return currentIndex;
   }
 }

@@ -7,5 +7,5 @@ public class Tag {
   // Operadores e pontuação
   EQ = 288, GE = 289, LE = 290, NE = 291, AND = 292, OR = 293, NOT = 294, SEMICOLON= 295, ATTRIB = 296, COMMA = 297, QUOTE = 298, OPEN_PARENTHESES = 299, CLOSE_PARENTHESES = 300, EOF = 301,
   // Outros tokens
-  NUM = 278, ID = 279, TRUE = 280, FALSE = 281;
+  NUM = 278, ID = 279, TRUE = 280, FALSE = 281, DOT = 282;
 }

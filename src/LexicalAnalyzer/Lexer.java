@@ -92,8 +92,7 @@ public class Lexer {
             else if (ch == '%') {
                 isCommentSection = !isCommentSection;
                 continue;
-            }
-            else if (ch == '\n')
+            } else if (ch == '\n')
                 line++; // conta linhas
             else
                 break;
@@ -136,6 +135,9 @@ public class Lexer {
                 return new Word("<>", Tag.NE, line);
             else
                 return new Token('<', line);
+        case '.':
+            readch();
+            return new Token(Tag.DOT, line);
         case '>':
             if (readch('='))
                 return new Word(">=", Tag.GE, line);
