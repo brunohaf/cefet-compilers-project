@@ -85,7 +85,16 @@ public class Validator {
       throw new InvalidSyntaxException(NO_SEMICOLON_ERROR_MESSAGE, tokenList.get(index).line);
     }
 
-    return indexOfNextTokenAfterDecl;
+    int indexOfNextTokenAfterDeclList = indexOfNextTokenAfterDecl + 1;
+
+    if (tokenList.get(indexOfNextTokenAfterDeclList).tag != Tag.BEG
+        && indexOfNextTokenAfterDeclList < tokenList.size()) {
+      indexOfNextTokenAfterDeclList = validateDeclList(indexOfNextTokenAfterDeclList);
+    } else {
+      return indexOfNextTokenAfterDecl + 1;
+    }
+
+    return indexOfNextTokenAfterDeclList;
   }
 
   // decl ::= ident-list is type
@@ -159,7 +168,7 @@ public class Validator {
     return new Tuple<Integer, Boolean>(indexOfNextTokenAfterExpression, true);
   }
 
-  //read-stmt ::= read "(" identifier ")"
+  // read-stmt ::= read "(" identifier ")"
   public Tuple<Integer, Boolean> validateReadStatement(int index) throws InvalidSyntaxException {
     int indexOfNextTokenAfterRead = index + 1;
     if (tokenList.get(indexOfNextTokenAfterRead).tag != Tag.OPEN_PARENTHESES) {
@@ -271,7 +280,6 @@ public class Validator {
       throw new InvalidSyntaxException(IF_STATEMENT_NOT_START_WITH_BEGIN_ERROR_MESSAGE, token.line);
     } else {
 
-      // beginStack.push(tokenList.get(indexOfNextTokenAfterCloseParentheses));
       int indexOfNextTokenAfterBegin = indexOfNextTokenAfterCloseParentheses + 1;
 
       int indexOfNextTokenAfterStatementList = validateStatementList(indexOfNextTokenAfterBegin) + 1;
@@ -286,7 +294,6 @@ public class Validator {
   }
 
   // assign-statement:= identifier ":=" simple_expr
-  // maior := 22
   public Tuple<Integer, Boolean> validateAssignStatement(int index) throws InvalidSyntaxException {
     Token token = tokenList.get(index);
 
@@ -404,7 +411,7 @@ public class Validator {
       int indexOfNextTokenAfterMulop = index + 1;
       Tuple<Integer, Boolean> isFactorA = validateFactorA(indexOfNextTokenAfterMulop);
       if (isFactorA.value) {
-        int indexOfNextTokenAfterFactorA = indexOfNextTokenAfterMulop + 1;
+        int indexOfNextTokenAfterFactorA = isFactorA.key + 1;
         return validateTerm2(indexOfNextTokenAfterFactorA);
       } else {
         throw new InvalidSyntaxException(INVALID_TERM_ERROR_MESSAGE, tokenList.get(index).line);
@@ -521,7 +528,8 @@ public class Validator {
   // relop := "=" | ">" | ">=" | "<" | "<=" | "<>"
   private boolean validateRelOp(Token token) {
     String lexem = token.toString();
-    return lexem.equals("=") || lexem.equals(">") || lexem.equals(">=") || lexem.equals("<") || lexem.equals("<=") || lexem.equals("<>");
+    return lexem.equals("=") || lexem.equals(">") || lexem.equals(">=") || lexem.equals("<") || lexem.equals("<=")
+        || lexem.equals("<>");
   }
 
   // mulop := "*" | "/" | and
