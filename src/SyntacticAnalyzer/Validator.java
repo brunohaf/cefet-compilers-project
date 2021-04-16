@@ -29,34 +29,23 @@ public class Validator {
   private static final String INVALID_ATTRIB_SYNTAX_ERROR_MESSAGE = "Attritution syntax error.";
   private static final String UNCLOSED_PARENTHESES_ERROR_MESSAGE = "A parentheses was open but not closed in the same line or was never closed.";
   private static final String FACTORA_END_ERROR_MESSAGE = "FACTOR-A does not contain a FACTOR, NOT FACTOR or -FACTOR.";
-  private static final String TERM_WITH_NO_IDENTIFIER_ERROR_MESSAGE = "TERM with no-IDENTIFIER.";
-  private static final String SIMPLEEXPR_WITH_NO_FACTORA_ERROR_MESSAGE = "SIMPLE-EXPRESSION with no-FACTOR-A.";
   private static final String EXPRESSION_WITH_NO_SIMPLEEXPR_ERROR_MESSAGE = "EXPRESSION with no-SIMPLE-EXPRESSION.";
   private static final String WRITE_NOT_FOLLOWED_BY_PARENTHESES_ERROR_MESSAGE = "WRITE command not followed by parentheses.";
-  private static final String WRITE_WITH_NO_IDENTIFIER_ERROR_MESSAGE = "WRITE command with invalid identifier.";
   private static final String WRITE_WITHOUT_CLOSE_PARENTHESES_ERROR_MESSAGE = "WRITE command does not end with parentheses.";
-  private static final String WRITE_WITH_NO_WRITABLE_ERROR_MESSAGE = "WRITE command with no WRITABLE value.";
   private static final String IF_WITHOUT_END_ERROR_MESSAGE = "IF STATEMENT does not end with END.";
   private static final String IDENTLIST_NOT_STARTING_WITH_IDENTIFIER_ERROR_MESSAGE = "IDENTLIST does not start with IDENTIFIER.";
   private static final String IDENTLIST_WITH_NO_IS_STATEMENT_ERROR_MESSAGE = "IDENTLIST has no IS statement.";
   private static final String IDENTLIST_WITH_NO_TYPE_ERROR_MESSAGE = "IDENTLIST has no declared TYPE";
   private static final String PROGRAM_DO_NOT_START_INIT_ERROR_MESSAGE = "Program does not start with INIT.";
   private static final String PROGRAM_DO_NOT_END_WITH_STOP = "Program does not end with STOP.";
-  private static final String LITERAL_NOT_BETWEEN_QUOTES_ERROR_MESSAGE = "LITERAL is not between QUOTES.";
-  private static final String REAL_CONST_NOT_STARTING_WITH_INTEGER_CONST = null;
-  private static final String REAL_CONST_NOT_STARTING_WITH_INTEGER_CONST_ERROR_MESSAGE = null;
-  private static final String REAL_CONST_HAS_NO_DOT_ERROR_MESSAGE = null;
-  private static final String SIMPLEEXPR_WITH_NO_ADDOP_ERROR_MESSAGE = null;
-  private static final String INVALID_TERM_ERROR_MESSAGE = null;
-  private static final String INVALID_SIMPLEEXPR_ERROR_MESSAGE = null;
-  private static final String READ_WITHOUT_CLOSE_PARENTHESES_ERROR_MESSAGE = null;
-  private static final String READ_NOT_FOLLOWED_BY_PARENTHESES_ERROR_MESSAGE = null;
+  private static final String INVALID_TERM_ERROR_MESSAGE = "Invalid TERM.";
+  private static final String INVALID_SIMPLEEXPR_ERROR_MESSAGE = "Invalid SIMPLE EXPRESSION.";
+  private static final String READ_WITHOUT_CLOSE_PARENTHESES_ERROR_MESSAGE = "READ statement without CLOSE PARENTHESES.";
+  private static final String READ_NOT_FOLLOWED_BY_PARENTHESES_ERROR_MESSAGE = "READ statement is not followed by OPEN PARENTHESES.";
   private ArrayList<Token> tokenList;
-  private Stack<Token> lambdaStk;
 
   public Validator(ArrayList<Token> tokenList) {
     this.tokenList = tokenList;
-    this.lambdaStk = new Stack<Token>();
   }
 
   public void validateInitStop() throws InvalidSyntaxException {
@@ -80,7 +69,7 @@ public class Validator {
     if (tokenList.get(indexOfNextTokenAfterInit).tag != Tag.BEG) {
       indexOfNextTokenAfterDeclList = validateDeclList(indexOfNextTokenAfterInit);
     }
-    int indexOfNextTokenAfterStatementList = validateStatementList(indexOfNextTokenAfterDeclList + 1) + 1;
+    int indexOfNextTokenAfterStatementList = validateStatementList(indexOfNextTokenAfterDeclList + 1);
 
     if (tokenList.get(indexOfNextTokenAfterStatementList).tag != Tag.STOP) {
       throw new InvalidSyntaxException(PROGRAM_DO_NOT_END_WITH_STOP,
@@ -172,6 +161,7 @@ public class Validator {
     return new Tuple<Integer, Boolean>(indexOfNextTokenAfterExpression, true);
   }
 
+  //read-stmt ::= read "(" identifier ")"
   public Tuple<Integer, Boolean> validateReadStatement(int index) throws InvalidSyntaxException {
     int indexOfNextTokenAfterRead = index + 1;
     if (tokenList.get(indexOfNextTokenAfterRead).tag != Tag.OPEN_PARENTHESES) {
@@ -214,10 +204,10 @@ public class Validator {
     int indexOfNextTokenSemicolon = indexOfNextTokenAfterStatement + 1;
 
     if (tokenList.get(indexOfNextTokenSemicolon).tag != Tag.STOP && indexOfNextTokenSemicolon < tokenList.size()) {
-      validateStatementList(indexOfNextTokenSemicolon);
+      indexOfNextTokenSemicolon = validateStatementList(indexOfNextTokenSemicolon);
     }
 
-    return indexOfNextTokenAfterStatement;
+    return indexOfNextTokenSemicolon;
   }
 
   // statment ::= assign-stmt | if-stmt | do-stmt | read-stmt | write-stmt
